@@ -10,6 +10,7 @@ from pybedtools import BedTool
 # Initialise the logger
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('bed_loader')
+
 class BEDParser():
     """
     ! This is really just an ENCODE parser! It should be split into basic bed file functions and a ENCODE parser inheriting from that
@@ -39,29 +40,26 @@ class BEDParser():
 
         
 
-    def load_prepare_meta(path:str, organism:str, assays:list, c_o_i:list, file_type:list=["bed narrowPeak"], assembly:str="hg19"):
+    def load_prepare_meta(self, path:str, organism:str, assays:list, columns_of_interest:list, file_type:list=["bed narrowPeak"], assembly:str="hg19"):
         """
-        @parameter c_o_i  := Columns of interest, the columns of the meta-file, that are relevant for the selection.
+        @parameter columns_of_interest  := Columns of interest, the columns of the meta-file, that are relevant for the selection.
         """
         with open(path, "r") as f:
             file = pd.read_csv(f, sep="\t")
 
         
         df = file[(file["Biosample organism"] == organism) &
-            (file["Assay"].isin(assays))][c_o_i]
+            (file["Assay"].isin(assays))][columns_of_interest]
         df_ft = df[df["File format"].isin(file_type)]
         
         df_as = df_ft[df_ft["File assembly"] == assembly]
         
         # dropping all rows, that are NA in any of these columns, as they become unusable else.
         df_na = df_as.dropna(subset=["File analysis title", "Biosample term name", "Experiment accession", "Assay"])
-        # The project order makes sure, that the latest version of each experiment is being used withing the assembly. 
-
-
-        
+        # The project order makes sure, that the latest version of each experiment is being used withing the assembly.        
         return df_na
 
-    def generate_feature_exp_dict(meta_df):
+    def generate_feature_exp_dict(self, meta_df):
         """
         This function expects the meta_df to hold either DNase-seq or specifically named targets (like in TF/Histone assays, naming the TF or histone modification as target)
         """
@@ -94,12 +92,15 @@ class BEDParser():
 
 
 
-    def generate_feature_list(feature_exp_dict):
+    def generate_feature_list(self, feature_exp_dict):
         return sorted(feature_exp_dict.keys(), key=lambda x: (x.split("|")[1], x.split("|")[0], x.split("|")[2]))
 
 
-    def read_bed_file(path:str, file, read_error_log, proj_order:str):
-    
+    def read_bed_file(self, path:str, file, assembly:str):
+        if assembly == "GRCh38":
+            proj_order = self.proj_order_38
+        else:
+            proj_order = self.proj_order_37
         file_path = os.path.join(path, f"{file['File accession']}.{file['File type']}.gz")
         try:
             snps = BedTool(file_path)
@@ -149,7 +150,7 @@ class BEDParser():
         df_dup = df_sort.drop_duplicates(subset=["chrom", "start", "end", "assembly"], keep="last")
         return df_dup.drop(["proj_order", "bio_len", "tech_len"], axis=1)
 
-    def get_peaks_per_feature(meta_df, feature_list, feature_exp_dict, path_bed_out, proj_order):
+    def get_peaks_per_feature(self, meta_df, feature_list, feature_exp_dict, path_bed_out, proj_order):
         i = 0
         read_error_log = logging.get_logger('read_error_log')
         read_error_log.setLevel(logging.ERROR)
@@ -197,8 +198,36 @@ class BEDParser():
             del(feature_df)
 
 
+    def clean_meta_df(self, meta_df, assembly="hg19"):
+        meta_df = meta_df[meta_df["File assembly"] == assembly]
+        meta_df = meta_df.dropna(subset=["File analysis title", "Biosample term name", "Experiment accession", "Assay"])
+        meta_df = meta_df[meta_df["File format"] == "bed narrowPeak"]
 
-    def load_peak_file(path:str):
+        return meta_df
+
+    def choose_assay_version(self, meta_df, assembly="hg19"):
+        """
+
+        This function chooses automatically the latest release and most complete bed file per experiment in a specified assembly ('hg19' or 'GRCh38'). 
+        """
+        proj_order = self.proj_order_37
+        if assembly == "GRCh38":
+            proj_order = self.proj_order_38
+        meta_df = meta_df[meta_df.assembly == assembly]  # This should have happened in the cleaning step, but rather save than sorry
+        meta_df["proj_order"] = meta_df["analysis"].apply(lambda x: proj_order.index(x))
+        meta_df["bio_len"] = meta_df.bio_repl.str.len()
+        meta_df["tech_len"] = meta_df.tech_repl.str.len()
+        meta_df_sort = meta_df.sort_values(["proj_order", "bio_len", "tech_len"], ascending=True) 
+        # This keeps only the assay of each experiment with the highest project order (latest release), the highest number of biological replicates and the highest number of technical replicates
+        meta_df_dup = meta_df_sort.drop_duplicates(subset=["chrom", "start", "end", "assembly"], keep="last") 
+        return meta_df_dup.drop(["proj_order", "bio_len", "tech_len"], axis=1)
+    
+
+
+    def load_peak_file(self, path:str):
+        """
+            This is more of a analysis of the dataset. It loads the peak file and plots the heatmap of the peaks per position
+        """
         df = pd.read_csv(path, sep="\t", names=["chrom", "start", "end", "peak_size"])
         
         df["peaks"] = 1
@@ -229,4 +258,3 @@ class BEDParser():
             plt.tight_layout()
             plt.show()
             break
-
