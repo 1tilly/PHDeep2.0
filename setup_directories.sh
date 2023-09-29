@@ -5,16 +5,16 @@ BASE_DIRS=("data/bed_files" "data/vcf_files" "data/reference_genome" "src/data_l
 
 # Files to be created within specific directories
 declare -A FILES
-FILES["src/data_loading"]="bed_loader.py vcf_loader.py genome_loader.py"
+FILES["src/data_loading"]="bed_loader.py vcf_loader.py genome_loader.py gff_loader.py"
 FILES["src/data_processing"]="bed_to_training.py vcf_processing.py"
-FILES["src/models/base_model"]="architecture.py train.py tokeniser.py vocabulary.txt"
-FILES["src/models/model2"]="architecture.py train.py tokeniser.py vocabulary.txt"
+FILES["src/models/base_model"]="architecture.py train.py"
+FILES["src/models/cnn_model1"]="architecture.py train.py"
 FILES["src/models/bert_models/bert_model1"]="architecture.py train.py tokeniser.py vocabulary.txt"
 FILES["src/prediction"]="predict.py"
 FILES["src/post_prediction"]="aggregation.py"
 FILES["src/statistical_testing"]="skat_o_test.py"
 FILES["src/utils"]="plotting.py"
-FILES["src/experiments"]="base_model_config.yaml model2_config.yaml bert_model1_config.yaml"
+FILES["src/experiments"]="base_model_config.yaml cnn_model1_config.yaml bert_model1_config.yaml"
 FILES["config"]="paths.py"
 FILES["."]="README.md requirements.txt main.py"
 
