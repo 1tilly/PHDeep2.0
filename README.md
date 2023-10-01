@@ -1,5 +1,5 @@
 ## Current state
-This code has not been tested since the refactoring. This is going to happen, when a large chunk of the code has been moved.
+This code has not been tested since the refactoring. This is going to happen, when a large chunk of the code has been moved. Further, there are a few placeholder files/direcotires present, as the first step in the refactoring was the consideration of modules and components in this repository.
 
 # PHDeep - Pulmonary Hypertension Deep Learning pipeline
 This project is a refactored version of my PhD project, based on the thesis "Deep Learning of regulatory sequence variation in Pulmonary Arterial Hypertension". It is still strongly under development.
