@@ -15,7 +15,7 @@ class GeneHancerParser:
         if path is None:
             path = self.path
 
-        self.df.write_pickle(path, sep="\t")
+        self.df.to_pickle(path)
         return self.df
 
     def load_df(self, path=None):
@@ -104,10 +104,10 @@ class GeneHancerParser:
 
     def add_to_snplist(self, snpID_list, enhancer=None):
         if "snp_list" not in self.df.columns:
-            self.df.loc["snp_list"] = ""
+            self.df["snp_list"] = ""
         if enhancer is not None:
-            self.df[self.df["genehancer_id"] == enhancer, "snp_list"] = self.df.loc[self.df["genehancer_id"]
-                                                                                    == enhancer, "snp_list"].astype(str) + " ".join(snpID_list)
+            mask = self.df["genehancer_id"] == enhancer
+            self.df.loc[mask, "snp_list"] = self.df.loc[mask, "snp_list"].astype(str) + " ".join(snpID_list)
         else:
             """
             ToDo: Here I should create functionality that uses the "get_region" function for each snp and add it to the according enhancer
@@ -121,5 +121,5 @@ class GeneHancerParser:
         if df is None:
             # This way a dataframe from outside can be passed to be finalized
             df = self.df
-        df = df.snp_list.apply(lambda x: x.trim().split(sep))
+        df = df.snp_list.apply(lambda x: str(x).strip().split(sep))
         return df        

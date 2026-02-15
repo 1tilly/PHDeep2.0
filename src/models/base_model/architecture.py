@@ -11,7 +11,6 @@ class AbstractCNN(ABC, nn.Module):
         self.pool_kernel_size = pool_kernel_size
     
     @classmethod
-    @abstractmethod
     def output_size_1d_pt(cls, seq_len: int, padding: int, dilation: int, kernel_size: int, stride: int) -> int:
         """
         Calculates the output size of a 1D convolutional layer in PyTorch.
@@ -33,7 +32,7 @@ class AbstractCNN(ABC, nn.Module):
         """
         Calculate the output channels given a list of layer specifications.
         """
-        for layer in reversed(layers):
+        for layer in layers:
             sequence_length = cls.output_size_1d_pt(
                 sequence_length,
                 padding=layer['padding'],

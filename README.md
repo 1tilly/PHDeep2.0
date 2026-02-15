@@ -10,3 +10,56 @@ Post_prediction is for the handling of predicted epigenetic marks. Here, you wil
 
 # Future work
 These modules will be connected in Nextflow Pipelines, so that it is possible to run the pipeline from training-set generation over model training to prediction and post_prediction. 
+
+## Development setup with uv
+
+1. Install `uv`:
+
+```bash
+python3 -m pip install --user uv
+```
+
+2. Create and sync the environment:
+
+```bash
+uv venv .venv
+uv sync --extra dev
+```
+
+3. Activate:
+
+```bash
+source .venv/bin/activate
+```
+
+## ENCODE fixture for bed_to_training
+
+Generate a tiny reproducible fixture from ENCODE:
+
+```bash
+.venv/bin/python scripts/fetch_encode_dnase_fixture.py
+```
+
+Run the converter against the fixture:
+
+```bash
+.venv/bin/python src/data_processing/bed_to_training.py \
+  -m tests/data/encode_dnase_fixture/metadata.tsv \
+  -i tests/data/encode_dnase_fixture/input_bed_files \
+  -o tests/data/encode_dnase_fixture/output/training_regions.bed \
+  -e tests/data/encode_dnase_fixture/output/read_errors.txt \
+  -f tests/data/encode_dnase_fixture/output/features.txt \
+  -a GRCh38
+```
+
+Run tests:
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+Validate pipeline config contract:
+
+```bash
+.venv/bin/python main.py --validate-config config/pipeline.example.json
+```

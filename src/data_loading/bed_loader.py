@@ -17,26 +17,72 @@ class BEDParser():
     
     """
 
-    def __init__():
+    def __init__(
+        self,
+        path_meta_file=None,
+        path_bed_out=None,
+        organism="Homo sapiens",
+        assays=None,
+        columns_of_interest=None,
+    ):
 
         # We use the order of projects to determine which of the assay_values to drop
-        proj_order_37 = ['Lab custom hg19', 'Lab custom hg19 V7', 'Lab custom hg19 V10', 'Lab custom hg19 V19',
-                        'ENCODE3 hg19', 'ENCODE3 hg19 V19']
-        proj_order_38 = ['Lab custom GRCh38', 'Lab custom GRCh38 V24', 'ENCODE3 GRCh38',
-                        'ENCODE4 GRCh38', 'ENCODE3 GRCh38 V24', 'ENCODE4 GRCh38 V29',
-                        'ENCODE4 v1.1.0 GRCh38 V29', 'ENCODE4 v1.2.1 GRCh38 V29', 'ENCODE4 v1.4.0 GRCh38',
-                        'ENCODE4 v1.5.0 GRCh38', 'ENCODE4 v1.5.1 GRCh38', 'ENCODE4 v1.6.0 GRCh38', 'ENCODE4 v1.6.1 GRCh38',
-                        'ENCODE4 v1.7.0 GRCh38', 'ENCODE4 v1.8.0 GRCh38', 'ENCODE4 v1.9.1 GRCh38',
-                        'ENCODE4 v3.0.0-alpha.2 GRCh38', 'ENCODE4 v3.0.0 GRCh38']
+        self.proj_order_37 = [
+            "Lab custom hg19",
+            "Lab custom hg19 V7",
+            "Lab custom hg19 V10",
+            "Lab custom hg19 V19",
+            "ENCODE3 hg19",
+            "ENCODE3 hg19 V19",
+        ]
+        self.proj_order_38 = [
+            "Lab custom GRCh38",
+            "Lab custom GRCh38 V24",
+            "ENCODE3 GRCh38",
+            "ENCODE4 GRCh38",
+            "ENCODE3 GRCh38 V24",
+            "ENCODE4 GRCh38 V29",
+            "ENCODE4 v1.1.0 GRCh38 V29",
+            "ENCODE4 v1.2.1 GRCh38 V29",
+            "ENCODE4 v1.4.0 GRCh38",
+            "ENCODE4 v1.5.0 GRCh38",
+            "ENCODE4 v1.5.1 GRCh38",
+            "ENCODE4 v1.6.0 GRCh38",
+            "ENCODE4 v1.6.1 GRCh38",
+            "ENCODE4 v1.7.0 GRCh38",
+            "ENCODE4 v1.8.0 GRCh38",
+            "ENCODE4 v1.9.1 GRCh38",
+            "ENCODE4 v3.0.0-alpha.2 GRCh38",
+            "ENCODE4 v3.0.0 GRCh38",
+        ]
 
-        path_meta_file = "/home/tt419/Projects/DeepLearning/data/ENCODE_v1_orig_BED/metadata_v1.tsv"
-        path_bed_out = "/home/tt419/Projects/DeepLearning/data/ENCODE_v1_orig_BED/"
-
-        organism = "Homo sapiens"
-        assays = ["DNase-seq", "TF ChIP-seq", "Histone ChIP-seq", "Control ChIP-seq", "Hi-C", "ATAC-seq"]
-        columns_of_interest = ["File accession", "File format", "File type", "Experiment accession", "Output type", "Assay",
-                            "Biosample term name", "Experiment target", "File download URL", "Biological replicate(s)",
-                            "Technical replicate(s)", "Biosample treatments", "File assembly", "File analysis title"]
+        self.path_meta_file = path_meta_file
+        self.path_bed_out = path_bed_out
+        self.organism = organism
+        self.assays = assays or [
+            "DNase-seq",
+            "TF ChIP-seq",
+            "Histone ChIP-seq",
+            "Control ChIP-seq",
+            "Hi-C",
+            "ATAC-seq",
+        ]
+        self.columns_of_interest = columns_of_interest or [
+            "File accession",
+            "File format",
+            "File type",
+            "Experiment accession",
+            "Output type",
+            "Assay",
+            "Biosample term name",
+            "Experiment target",
+            "File download URL",
+            "Biological replicate(s)",
+            "Technical replicate(s)",
+            "Biosample treatments",
+            "File assembly",
+            "File analysis title",
+        ]
 
         
 
@@ -150,9 +196,9 @@ class BEDParser():
         df_dup = df_sort.drop_duplicates(subset=["chrom", "start", "end", "assembly"], keep="last")
         return df_dup.drop(["proj_order", "bio_len", "tech_len"], axis=1)
 
-    def get_peaks_per_feature(self, meta_df, feature_list, feature_exp_dict, path_bed_out, proj_order):
+    def get_peaks_per_feature(self, meta_df, feature_list, feature_exp_dict, path_bed_out, assembly="hg19"):
         i = 0
-        read_error_log = logging.get_logger('read_error_log')
+        read_error_log = logging.getLogger("read_error_log")
         read_error_log.setLevel(logging.ERROR)
         handler = logging.FileHandler( os.path.join(path_bed_out, "peak_size_read_errors.txt"), "w+")
         formatter = logging.Formatter('%(message)s')
@@ -170,11 +216,11 @@ class BEDParser():
                 # Iterate through all files in this experiment
                 for _, row in meta_df[meta_df["Experiment accession"] == exp].iterrows():
                             try:
-                                tmp = self.read_bed_file(path_bed_out, row, read_error_log, proj_order)
+                                tmp = self.read_bed_file(path_bed_out, row, assembly)
                             except FileNotFoundError:
                                 read_error_log.error(f"FNF: {row['File accession']}:{feature}")
                                 continue
-                            if tmp is not 0:
+                            if isinstance(tmp, pd.DataFrame):
                                 
                                 tmp["feature"] = feature
                                 tmp["peak_size"] = 0
@@ -187,13 +233,19 @@ class BEDParser():
                                 else:
                                     feature_df = tmp
                                 i += 1 
-                                if i%100 is 0:
+                                if i % 100 == 0:
                                     print(f"reached experiment iteration: {i}")
 
             if feature_df is not None:
                 full_directory_path = os.path.join(path_bed_out, "analyses", '-'.join(feature.split('|')))
                 os.makedirs(full_directory_path, exist_ok=True)
-                feature_df.to_csv(os.path.join(full_directory_path,f"peak_sizes.tsv"), "\t", index=False, mode="a+", header=False)
+                feature_df.to_csv(
+                    os.path.join(full_directory_path, "peak_sizes.tsv"),
+                    sep="\t",
+                    index=False,
+                    mode="a+",
+                    header=False,
+                )
                 
             del(feature_df)
 

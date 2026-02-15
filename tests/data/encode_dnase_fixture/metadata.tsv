@@ -1,0 +1,3 @@
+File accession	File format	File type	Experiment accession	Output type	Assay	Biosample term name	Experiment target	File download URL	Biological replicate(s)	Technical replicate(s)	Biosample treatments	File assembly	File analysis title	Biosample organism
+ENCFF887HIM	bed narrowPeak	bed	ENCSR000ELG	peaks	DNase-seq	naive B cell		https://www.encodeproject.org/files/ENCFF887HIM/@@download/ENCFF887HIM.bed.gz	1	1_1,1_2		GRCh38	ENCODE4 GRCh38	Homo sapiens
+ENCFF668BIL	bed narrowPeak	bed	ENCSR000EJC	peaks	DNase-seq	GM10266		https://www.encodeproject.org/files/ENCFF668BIL/@@download/ENCFF668BIL.bed.gz	1	1_1,1_2		GRCh38	ENCODE4 GRCh38	Homo sapiens
