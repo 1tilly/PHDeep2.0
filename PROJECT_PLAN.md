@@ -38,6 +38,7 @@ Reach functional parity with the original `PhDeep` feature set while making `PHD
 - Wired `main.py --run-config` to execute stage graph from typed config.
 - Added runner tests: `tests/test_workflow_runner.py`.
 - Hardened `bed_to_training` by replacing deprecated dataframe append flow with concat.
+- Added portability guardrail test for hardcoded site paths: `tests/test_portability_guardrails.py`.
 
 ## Milestones
 
@@ -120,7 +121,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | PH2-003 | M0 | Fix broken imports/signatures in loaders/models | P0 | PH2-001 | in_progress | Current runtime blockers resolved |
 | PH2-004 | M0 | Add pre-commit hooks (ruff/black/mypy/pytest) | P1 | PH2-001 | todo | Hooks run locally and in CI |
 | PH2-005 | M1 | Implement typed settings module (`paths`, `env`, `backend`) | P0 | PH2-001 | done | All path/runtime values loaded from config/env |
-| PH2-006 | M1 | Remove hardcoded absolute paths from source tree | P0 | PH2-005 | in_progress | `rg '/home/|/rds/'` returns no code hits |
+| PH2-006 | M1 | Remove hardcoded absolute paths from source tree | P0 | PH2-005 | done | `rg '/home/|/rds/'` returns no code hits |
 | PH2-007 | M1 | Define execution backend interface | P0 | PH2-005 | done | `LocalRunner` implemented with contract tests |
 | PH2-008 | M1 | Add backend adapters (`SlurmRunner`, `AwsBatchRunner`) as optional modules | P1 | PH2-007 | todo | Adapters can be imported without affecting core |
 | PH2-009 | M2 | Repair and finalize BED parser API | P0 | PH2-003, PH2-005 | in_progress | BED parser passes unit tests on fixtures |
