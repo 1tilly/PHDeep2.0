@@ -2,6 +2,7 @@ import argparse
 
 from config.paths import load_paths
 from config.pipeline_config import load_pipeline_config
+from src.workflow.runners import run_pipeline
 
 
 def main():
@@ -15,6 +16,11 @@ def main():
         "--validate-config",
         type=str,
         help="Validate a pipeline JSON config and print normalized summary.",
+    )
+    parser.add_argument(
+        "--run-config",
+        type=str,
+        help="Run pipeline stages from a pipeline JSON config.",
     )
     args = parser.parse_args()
 
@@ -31,6 +37,16 @@ def main():
         print(f"config_version={config.version}")
         print(f"backend={config.execution.backend}")
         print(f"stage_order={','.join(config.stage_order)}")
+        return
+
+    if args.run_config:
+        config = load_pipeline_config(args.run_config)
+        results = run_pipeline(config)
+        print(f"backend={config.execution.backend}")
+        for stage in config.stage_order:
+            print(f"stage={stage}")
+            for key, value in results.get(stage, {}).items():
+                print(f"{stage}.{key}={value}")
         return
 
     print("PHDeep2.0 is installed. Use module CLIs for specific tasks.")

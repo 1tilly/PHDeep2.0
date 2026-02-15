@@ -63,3 +63,9 @@ Validate pipeline config contract:
 ```bash
 .venv/bin/python main.py --validate-config config/pipeline.example.json
 ```
+
+Run configured pipeline stages (local backend currently implemented):
+
+```bash
+.venv/bin/python main.py --run-config config/pipeline.example.json
+```

@@ -34,6 +34,10 @@ Reach functional parity with the original `PhDeep` feature set while making `PHD
 - Added typed pipeline config schema and validator: `config/pipeline_config.py`.
 - Added executable example config: `config/pipeline.example.json`.
 - Added tests for contract/schema validation: `tests/test_pipeline_config.py`.
+- Added backend-neutral runner interface with `LocalRunner`: `src/workflow/runners.py`.
+- Wired `main.py --run-config` to execute stage graph from typed config.
+- Added runner tests: `tests/test_workflow_runner.py`.
+- Hardened `bed_to_training` by replacing deprecated dataframe append flow with concat.
 
 ## Milestones
 
@@ -117,10 +121,10 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | PH2-004 | M0 | Add pre-commit hooks (ruff/black/mypy/pytest) | P1 | PH2-001 | todo | Hooks run locally and in CI |
 | PH2-005 | M1 | Implement typed settings module (`paths`, `env`, `backend`) | P0 | PH2-001 | done | All path/runtime values loaded from config/env |
 | PH2-006 | M1 | Remove hardcoded absolute paths from source tree | P0 | PH2-005 | in_progress | `rg '/home/|/rds/'` returns no code hits |
-| PH2-007 | M1 | Define execution backend interface | P0 | PH2-005 | todo | `LocalRunner` implemented with contract tests |
+| PH2-007 | M1 | Define execution backend interface | P0 | PH2-005 | done | `LocalRunner` implemented with contract tests |
 | PH2-008 | M1 | Add backend adapters (`SlurmRunner`, `AwsBatchRunner`) as optional modules | P1 | PH2-007 | todo | Adapters can be imported without affecting core |
-| PH2-009 | M2 | Repair and finalize BED parser API | P0 | PH2-003, PH2-005 | todo | BED parser passes unit tests on fixtures |
-| PH2-010 | M2 | Rebuild `bed_to_training` workflow using parser API | P0 | PH2-009 | todo | Feature list + training bed outputs reproducible |
+| PH2-009 | M2 | Repair and finalize BED parser API | P0 | PH2-003, PH2-005 | in_progress | BED parser passes unit tests on fixtures |
+| PH2-010 | M2 | Rebuild `bed_to_training` workflow using parser API | P0 | PH2-009 | in_progress | Feature list + training bed outputs reproducible |
 | PH2-011 | M2 | Harden genome/variant sequence generation (`vcf_processing`) | P0 | PH2-003 | todo | Sequence mutation cases (SNV/INS/DEL) validated |
 | PH2-012 | M2 | Harden GeneHancer/GFF parser behavior and errors | P1 | PH2-003 | todo | Unsupported paths raise explicit typed errors |
 | PH2-013 | M2 | Build golden fixture dataset and expected outputs | P0 | PH2-009, PH2-010, PH2-011 | todo | Fixtures versioned; regression tests pass |
@@ -132,7 +136,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | PH2-019 | M4 | Implement post-prediction aggregation and scoring | P0 | PH2-018 | todo | Aggregated outputs match schema and tests |
 | PH2-020 | M4 | Define stats handoff contract and export format | P1 | PH2-019 | todo | Contract doc + integration tests complete |
 | PH2-021 | M4 | Add optional R/BCF adapter wrappers | P2 | PH2-020, PH2-007 | todo | Optional adapters enabled by extras only |
-| PH2-022 | M5 | Implement local workflow runner over stage graph | P0 | PH2-007, PH2-010, PH2-016, PH2-019 | todo | Full mini pipeline runnable from one command |
+| PH2-022 | M5 | Implement local workflow runner over stage graph | P0 | PH2-007, PH2-010, PH2-016, PH2-019 | in_progress | Full mini pipeline runnable from one command |
 | PH2-023 | M5 | Implement Slurm workflow adapter using same stage graph | P1 | PH2-022, PH2-008 | todo | Same graph executes via Slurm config |
 | PH2-024 | M5 | Implement AWS Batch workflow adapter using same stage graph | P1 | PH2-022, PH2-008 | todo | Same graph executes via AWS Batch config |
 | PH2-025 | M6 | CI pipeline with lint/type/tests/build matrix | P0 | PH2-004, PH2-013, PH2-016, PH2-019 | todo | CI required checks enforced on main |
