@@ -157,7 +157,7 @@ class BCFParser():
             vcf.loc[:,[x for x in vcf.columns if "AF" in x]] = vcf.loc[:,[x for x in vcf.columns if "AF" in x]].replace({".":0.0})
             vcf = vcf.astype({x:"int64" for x in vcf.columns if "AC" in x})
             vcf = vcf.astype({x:"float64" for x in vcf.columns if "AF" in x})
-            vcf[list(vcf.filter(regex="[A-Z]*\d{6}").columns)] = vcf[list(vcf.filter(regex="[A-Z]*\d{6}").columns)].astype(str)
+            vcf[list(vcf.filter(regex=r"[A-Z]*\d{6}").columns)] = vcf[list(vcf.filter(regex=r"[A-Z]*\d{6}").columns)].astype(str)
             vcf["pah_var"] = vcf[pah_IDs].apply(lambda col: col.str.contains("1"), axis=0).any(axis=1)
 
 

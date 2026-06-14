@@ -23,7 +23,7 @@ models = ["torch>=2.2"]
 genomics = ["pyfaidx>=0.8", "pybedtools>=0.9"]
 stats = ["rpy2>=3.5"]
 viz = ["matplotlib>=3.8"]
-dev = ["pytest>=8.0", "ruff>=0.7", "mypy>=1.10"]
+dev = ["pytest>=8.0", "ruff>=0.7", "mypy>=1.10", "types-requests"]
 
 [tool.setuptools]
 include-package-data = true
