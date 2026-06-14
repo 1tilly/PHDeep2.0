@@ -43,21 +43,36 @@ class TrainConfig:
     train_regions_bed: Path
     reference_fasta: Path
     output_dir: Path
+    # Training hyperparameters
+    learning_rate: float = 0.01
+    batch_size: int = 128
+    n_epochs: int = 100
+    patience: int = 10
+    seed: int = 42
+    val_split: float = 0.1
+    num_workers: int = 4
 
 
 @dataclass(frozen=True)
 class PredictConfig:
     mode: Literal["reference", "variant"]
+    model_name: str
     model_checkpoint: Path
+    sequence_length: int
+    n_targets: int
+    reference_fasta: Path
     output_predictions: Path
     input_regions_bed: Path | None = None
     input_variants_feather: Path | None = None
+    batch_size: int = 256
 
 
 @dataclass(frozen=True)
 class AggregateConfig:
     input_predictions: list[Path]
     output_scores: Path
+    group_col: str = "gene_symbol"
+    feature_names_file: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -114,16 +129,28 @@ class PipelineConfig:
                 train_regions_bed=_to_path(train_data["train_regions_bed"]),
                 reference_fasta=_to_path(train_data["reference_fasta"]),
                 output_dir=_to_path(train_data["output_dir"]),
+                learning_rate=float(train_data.get("learning_rate", 0.01)),
+                batch_size=int(train_data.get("batch_size", 128)),
+                n_epochs=int(train_data.get("n_epochs", 100)),
+                patience=int(train_data.get("patience", 10)),
+                seed=int(train_data.get("seed", 42)),
+                val_split=float(train_data.get("val_split", 0.1)),
+                num_workers=int(train_data.get("num_workers", 4)),
             )
 
         predict_cfg = None
         if predict_data is not None:
             predict_cfg = PredictConfig(
                 mode=predict_data["mode"],
+                model_name=predict_data["model_name"],
                 model_checkpoint=_to_path(predict_data["model_checkpoint"]),
+                sequence_length=int(predict_data["sequence_length"]),
+                n_targets=int(predict_data["n_targets"]),
+                reference_fasta=_to_path(predict_data["reference_fasta"]),
                 output_predictions=_to_path(predict_data["output_predictions"]),
                 input_regions_bed=_to_path(predict_data["input_regions_bed"]) if predict_data.get("input_regions_bed") else None,
                 input_variants_feather=_to_path(predict_data["input_variants_feather"]) if predict_data.get("input_variants_feather") else None,
+                batch_size=int(predict_data.get("batch_size", 256)),
             )
 
         aggregate_cfg = None
@@ -131,6 +158,8 @@ class PipelineConfig:
             aggregate_cfg = AggregateConfig(
                 input_predictions=[_to_path(p) for p in aggregate_data["input_predictions"]],
                 output_scores=_to_path(aggregate_data["output_scores"]),
+                group_col=aggregate_data.get("group_col", "gene_symbol"),
+                feature_names_file=_to_path(aggregate_data["feature_names_file"]) if aggregate_data.get("feature_names_file") else None,
             )
 
         stats_cfg = None
@@ -184,6 +213,8 @@ class PipelineConfig:
                 raise ValueError("predict.input_regions_bed is required when mode='reference'")
             if self.predict.mode == "variant" and self.predict.input_variants_feather is None:
                 raise ValueError("predict.input_variants_feather is required when mode='variant'")
+            if self.predict.mode == "variant" and self.predict.input_regions_bed is not None:
+                raise ValueError("predict.input_regions_bed should not be set when mode='variant'")
 
 
 def load_pipeline_config(config_path: str | Path) -> PipelineConfig:

@@ -54,6 +54,8 @@ class ReferencePredictor:
         Defaults to CUDA if available, else CPU.
     batch_size : int
         Number of windows to predict at once.
+    checkpoint_path : str | Path | None
+        If provided, load model weights from this checkpoint before predicting.
     """
 
     def __init__(
@@ -63,12 +65,16 @@ class ReferencePredictor:
         seq_len: int = 1000,
         device: torch.device | None = None,
         batch_size: int = 256,
+        checkpoint_path: str | Path | None = None,
     ) -> None:
         self.model = model
         self.seq_len = seq_len
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = batch_size
-        self.model.to(self.device).eval()
+        if checkpoint_path is not None:
+            self.model = _load_model(self.model, checkpoint_path, self.device)
+        else:
+            self.model.to(self.device).eval()
 
         import pyfaidx
         self._genome = pyfaidx.Fasta(str(genome_fasta), as_raw=True)
@@ -151,6 +157,8 @@ class VariantEffectPredictor:
         Sequence window length expected by the model.
     device : torch.device | None
     batch_size : int
+    checkpoint_path : str | Path | None
+        If provided, load model weights from this checkpoint before predicting.
     """
 
     def __init__(
@@ -160,12 +168,16 @@ class VariantEffectPredictor:
         seq_len: int = 1000,
         device: torch.device | None = None,
         batch_size: int = 256,
+        checkpoint_path: str | Path | None = None,
     ) -> None:
         self.model = model
         self.seq_len = seq_len
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = batch_size
-        self.model.to(self.device).eval()
+        if checkpoint_path is not None:
+            self.model = _load_model(self.model, checkpoint_path, self.device)
+        else:
+            self.model.to(self.device).eval()
 
         import pyfaidx
         self._genome = pyfaidx.Fasta(str(genome_fasta), as_raw=True)

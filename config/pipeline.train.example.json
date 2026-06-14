@@ -1,0 +1,35 @@
+{
+  "version": "1",
+  "execution": {
+    "backend": "local",
+    "profile": "full"
+  },
+  "stage_order": [
+    "bed_to_training",
+    "train"
+  ],
+  "bed_to_training": {
+    "metadata_tsv": "data/encode_metadata.tsv",
+    "input_bed_dir": "data/encode_beds/",
+    "output_bed": "results/training_regions.bed",
+    "output_features": "results/features.txt",
+    "output_errors": "results/read_errors.txt",
+    "assembly": "GRCh38",
+    "organism": "Homo sapiens"
+  },
+  "train": {
+    "model_name": "deeper_deepsea",
+    "sequence_length": 1000,
+    "n_targets": 919,
+    "train_regions_bed": "results/training_regions.bed",
+    "reference_fasta": "data/GRCh38.fa",
+    "output_dir": "results/model/",
+    "learning_rate": 0.01,
+    "batch_size": 128,
+    "n_epochs": 100,
+    "patience": 10,
+    "seed": 42,
+    "val_split": 0.1,
+    "num_workers": 4
+  }
+}
