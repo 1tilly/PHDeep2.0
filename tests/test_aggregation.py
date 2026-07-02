@@ -14,7 +14,7 @@ def _make_delta_df(n_variants=10, n_features=4, seed=0):
     rng = np.random.default_rng(seed)
     data = {
         "variant_id": [f"var_{i}" for i in range(n_variants)],
-        "gene_symbol": ["BMPR2"] * 5 + ["SOX17"] * 5,
+        "gene_symbol": ["BMPR2"] * (n_variants // 2) + ["SOX17"] * (n_variants - n_variants // 2),
         "chromosome": ["1"] * n_variants,
         "start": list(range(1000, 1000 + n_variants)),
     }

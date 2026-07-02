@@ -2,6 +2,10 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
+pytest.importorskip("pybedtools", reason="pybedtools not installed")
+
 
 def test_bed_to_training_runs_on_encode_fixture(tmp_path):
     repo_root = Path(__file__).resolve().parents[1]

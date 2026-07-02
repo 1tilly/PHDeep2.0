@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("pybedtools", reason="pybedtools not installed")
+
 from config.pipeline_config import PipelineConfig
 from src.workflow.runners import LocalRunner, get_runner, run_pipeline
 
@@ -41,25 +43,15 @@ def test_run_pipeline_local_bed_to_training(tmp_path):
     assert results["bed_to_training"]["written_features"] > 0
 
 
-def test_local_runner_rejects_unimplemented_stage(tmp_path):
-    config = PipelineConfig.from_dict(
-        {
-            "version": "1",
-            "execution": {"backend": "local"},
-            "stage_order": ["train"],
-            "train": {
-                "model_name": "base_model",
-                "sequence_length": 1000,
-                "n_targets": 2,
-                "train_regions_bed": str(tmp_path / "regions.bed"),
-                "reference_fasta": str(tmp_path / "genome.fa"),
-                "output_dir": str(tmp_path / "artifacts"),
-            },
-        }
-    )
-
-    with pytest.raises(NotImplementedError, match="train"):
-        LocalRunner().run(config)
+def test_pipeline_config_rejects_unknown_stage():
+    with pytest.raises(ValueError, match="Unknown stages"):
+        PipelineConfig.from_dict(
+            {
+                "version": "1",
+                "execution": {"backend": "local"},
+                "stage_order": ["nonexistent_stage"],
+            }
+        )
 
 
 def test_get_runner_rejects_unimplemented_backend():

@@ -22,7 +22,6 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from src.data_loading.genome_loader import SequenceParser
 from src.data_loading.genomics_dataset import one_hot_encode
 
 logger = logging.getLogger(__name__)

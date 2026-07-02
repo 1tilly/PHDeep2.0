@@ -60,8 +60,13 @@ def test_predict_reference_requires_regions():
                 "stage_order": ["predict"],
                 "predict": {
                     "mode": "reference",
+                    "model_name": "deepsea",
                     "model_checkpoint": "models/model.pt",
+                    "sequence_length": 1000,
+                    "n_targets": 919,
+                    "reference_fasta": "data/hg38.fa",
                     "output_predictions": "results/pred.feather",
+                    # input_regions_bed intentionally omitted → should raise
                 },
             }
         )

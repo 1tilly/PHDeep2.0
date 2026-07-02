@@ -9,7 +9,6 @@ from typing import Any, Protocol
 import torch
 
 from config.pipeline_config import PipelineConfig
-from src.data_processing.bed_to_training import run_bed_to_training
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +54,7 @@ class LocalRunner:
     def _run_bed_to_training(self, config: PipelineConfig) -> dict:
         if config.bed_to_training is None:
             raise ValueError("Missing bed_to_training config.")
+        from src.data_processing.bed_to_training import run_bed_to_training
         bed_cfg = config.bed_to_training
         return run_bed_to_training(
             meta_path=bed_cfg.metadata_tsv,
