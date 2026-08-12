@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phdeep2"
+version = "0.1.0"
+description = "PHDeep2.0 - portable deep learning pipeline for non-coding variant analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=1.5",
+  "requests>=2.31",
+  "scikit-learn>=1.3",
+  "matplotlib>=3.8",
+  "pyfaidx>=0.8",
+  "pybedtools>=0.9",
+]
+
+[project.optional-dependencies]
+models = ["torch>=2.2"]
+genomics = ["pyfaidx>=0.8", "pybedtools>=0.9"]
+stats = ["rpy2>=3.5"]
+viz = ["matplotlib>=3.8"]
+dev = ["pytest>=8.0", "ruff>=0.7", "mypy>=1.10", "types-requests"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"

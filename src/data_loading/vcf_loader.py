@@ -2,7 +2,10 @@ import os # For path building of paths and checking of file availability
 import subprocess
 import sys # to stream output of bcftools directly to file
 import pandas as pd # to handle the sample ids file and saving the 
-from rpy2 import robjects
+try:
+    from rpy2 import robjects
+except ImportError:  # pragma: no cover - optional dependency
+    robjects = None
 
 
 
@@ -12,14 +15,24 @@ class BCFParser():
     vcf_format = "%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AC_PAH\t%AN_PAH\t%AC_UPAH\t%AN_UPAH\t%AC_CTRLS\t%AN_CTRLS\t%AC_UCTRLS\t%AN_UCTRLS\t%AC_WGS13K\t%AN_WGS13K\t%AC_UWGS13K\t%AN_UWGS13K\t%NS\t%AF\t%MAF\t%HWE\t"\
     "%AF_PAH\t%MAF_PAH\t%HWE_PAH\t%AF_UPAH\t"\
     "[%GT\t]\n"
+
+    def __init__(self, bcftools_bin="bcftools", r_home=None):
+        self.bcftools_bin = bcftools_bin
+        self.r_home = r_home
         
-    def load_rpy2(self, path_to_script):
-        os.environ['R_HOME'] = "/home/tt419/.conda/envs/r_env/bin/R"
+    def load_rpy2(self, path_to_script, r_home=None):
+        if robjects is None:
+            raise ImportError("rpy2 is required for R integration. Install with project extra: stats")
+        effective_r_home = r_home or self.r_home
+        if effective_r_home:
+            os.environ["R_HOME"] = effective_r_home
         r = robjects.r
         r['source'](path_to_script)
         return r
 
     def load_sample_info_rpy2(self, output_path, force=False):
+        if robjects is None:
+            raise ImportError("rpy2 is required for R integration. Install with project extra: stats")
         persist_cohort_info_function_r = robjects.globalenv['persist_cohort_info']
         path_sample_ftr = os.path.join(output_path, "sample_info.feather")
         path_oc_ftr = os.path.join(output_path, "oc_ids.feather")
@@ -52,6 +65,8 @@ class BCFParser():
         """
         ROI := region of interests
         """
+        if robjects is None:
+            raise ImportError("rpy2 is required for R integration. Install with project extra: stats")
         persist_genelist_function_r = robjects.globalenv['persist_genelist']
         persist_genelist_function_r(output_path, genelist, grch)
         ensg = pd.read_feather(output_path)
@@ -98,15 +113,15 @@ class BCFParser():
         """
 
         gene_coords =  f"{gene_chr}:{gene_start}-{gene_end}"
-        command_view1 = f"~/bin/bcftools/bcftools view -IOu {path_to_vcf} {gene_coords}" # -I prevents update of AC/AN/AF
-        command_plugin = f"~/bin/bcftools/bcftools plugin fill-tags -Ou -- -S {sample_label_path} -t AC,AN,AF,MAF,HWE,NS "
+        command_view1 = f"{self.bcftools_bin} view -IOu {path_to_vcf} {gene_coords}" # -I prevents update of AC/AN/AF
+        command_plugin = f"{self.bcftools_bin} plugin fill-tags -Ou -- -S {sample_label_path} -t AC,AN,AF,MAF,HWE,NS "
  
-        command_query = f"~/bin/bcftools/bcftools query -H -f \"{out_format}\" "
+        command_query = f"{self.bcftools_bin} query -H -f \"{out_format}\" "
         vcf_out_path = os.path.join(out_path, f'pah_variants_{release}_{gene_name}_{gene_chr}_{gene_start}-{gene_end}.vcf')
         full_cmd = f"{command_view1} | {command_plugin}  | {command_query} > {vcf_out_path}"
         
         if pah_sample_ids is not None:  
-            command_view_filter = f"~/bin/bcftools/bcftools view -IOu -s {','.join(pah_sample_ids)} "
+            command_view_filter = f"{self.bcftools_bin} view -IOu -s {','.join(pah_sample_ids)} "
             full_cmd = f"{command_view1} | {command_plugin} | {command_view_filter} | {command_query} > {vcf_out_path}"
 
 
@@ -142,7 +157,7 @@ class BCFParser():
             vcf.loc[:,[x for x in vcf.columns if "AF" in x]] = vcf.loc[:,[x for x in vcf.columns if "AF" in x]].replace({".":0.0})
             vcf = vcf.astype({x:"int64" for x in vcf.columns if "AC" in x})
             vcf = vcf.astype({x:"float64" for x in vcf.columns if "AF" in x})
-            vcf[list(vcf.filter(regex="[A-Z]*\d{6}").columns)] = vcf[list(vcf.filter(regex="[A-Z]*\d{6}").columns)].astype(str)
+            vcf[list(vcf.filter(regex=r"[A-Z]*\d{6}").columns)] = vcf[list(vcf.filter(regex=r"[A-Z]*\d{6}").columns)].astype(str)
             vcf["pah_var"] = vcf[pah_IDs].apply(lambda col: col.str.contains("1"), axis=0).any(axis=1)
 
 

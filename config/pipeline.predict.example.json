@@ -1,0 +1,30 @@
+{
+  "version": "1",
+  "execution": {
+    "backend": "local",
+    "profile": "full"
+  },
+  "stage_order": [
+    "predict",
+    "aggregate"
+  ],
+  "predict": {
+    "mode": "variant",
+    "model_name": "deeper_deepsea",
+    "model_checkpoint": "results/model/checkpoints/best_model.pt",
+    "sequence_length": 1000,
+    "n_targets": 919,
+    "reference_fasta": "data/GRCh38.fa",
+    "output_predictions": "results/predictions/delta_scores.feather",
+    "input_variants_feather": "data/1kg_pah_genes/variants.feather",
+    "batch_size": 256
+  },
+  "aggregate": {
+    "input_predictions": [
+      "results/predictions/delta_scores.feather"
+    ],
+    "output_scores": "results/aggregated_scores.feather",
+    "group_col": "gene_symbol",
+    "feature_names_file": "results/features.txt"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "execution": {
+    "backend": "local",
+    "profile": "dev"
+  },
+  "stage_order": [
+    "bed_to_training"
+  ],
+  "bed_to_training": {
+    "metadata_tsv": "tests/data/encode_dnase_fixture/metadata.tsv",
+    "input_bed_dir": "tests/data/encode_dnase_fixture/input_bed_files",
+    "output_bed": "tests/data/encode_dnase_fixture/output/training_regions.bed",
+    "output_features": "tests/data/encode_dnase_fixture/output/features.txt",
+    "output_errors": "tests/data/encode_dnase_fixture/output/read_errors.txt",
+    "assembly": "GRCh38",
+    "organism": "Homo sapiens"
+  }
+}

@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-class VariantParser(BaseDataLoader):
+class VariantParser():
 
     def load_gene(fp): 
         var_df = pd.read_pickle(fp)
@@ -31,7 +31,7 @@ class VariantParser(BaseDataLoader):
         diff = length - len(result)
         if diff > 0:
             print(f"Adding {diff} basepairs in the end.")
-            result.append(reference[end_index:end_index + diff])
+            result = result + reference[end_index:end_index + diff]
         elif diff < 0:
             print(f"Erasing {diff} basepairs in the end")
             result = result[:length]
@@ -41,4 +41,3 @@ class VariantParser(BaseDataLoader):
     def iterate_through_mutations_in_sequence(ref_seq, ref_start, var_df, seq_len=2000):
         for index, var in var_df.iterrows():
             yield VariantParser.find_variant_in_reference((var.chromosome, var.start, var.reference, var.alternate), ref_seq, ref_start, seq_len)
-

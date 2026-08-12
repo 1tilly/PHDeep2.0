@@ -1,0 +1,1 @@
+"""Jellyfish model architecture."""

@@ -152,6 +152,17 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Data files (large, user-provided)
+*.fa
+*.fasta
+*.bam
+*.bai
+*.bcf
+*.vcf.gz
+*.feather
+checkpoints/
+data/
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

@@ -1,5 +1,5 @@
 import torch.nn as nn
-from base_model import AbstractCNN
+from src.models.base_model.architecture import AbstractCNN
 
 class BlainvilleDeepSEA(AbstractCNN):
     def __init__(self, sequence_length, n_targets):
