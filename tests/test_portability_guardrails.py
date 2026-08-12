@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 FORBIDDEN_PATH_SNIPPETS = ("/home/", "/rds/")
 
 

@@ -1,5 +1,6 @@
 import itertools
 from typing import Iterable
+
 import pandas as pd
 
 
@@ -88,12 +89,12 @@ class GeneHancerParser:
 
     def get_geneSNPlist(self, gene=None):
         if "snp_list" not in self.df.columns:
-            raise KeyError("There is no SNPlist column in the dataframe, yet") 
+            raise KeyError("There is no SNPlist column in the dataframe, yet")
         if gene is not None:
             """
             Explode by connected_gene, then merge by unique value and append the snp_lists
             """
-            df = self.df.explode(column="connected_gene").groupby(by=["connected_gene"]).agg({"genehancer_id":lambda x: set(x), "snp_list": lambda x:x.sum()})          
+            df = self.df.explode(column="connected_gene").groupby(by=["connected_gene"]).agg({"genehancer_id":lambda x: set(x), "snp_list": lambda x:x.sum()})
         else:
             """
             ToDo: Here I should implement a way to run this for each and every unique gene in the geneHancer DF, efficiently
@@ -122,4 +123,4 @@ class GeneHancerParser:
             # This way a dataframe from outside can be passed to be finalized
             df = self.df
         df = df.snp_list.apply(lambda x: str(x).strip().split(sep))
-        return df        
+        return df

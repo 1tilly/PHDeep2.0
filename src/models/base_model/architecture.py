@@ -1,6 +1,8 @@
+from abc import ABC, abstractmethod
+
 import torch
 import torch.nn as nn
-from abc import ABC, abstractmethod
+
 
 class AbstractCNN(ABC, nn.Module):
     def __init__(self, sequence_length: int, n_targets: int, conv_kernel_size: int = 8, pool_kernel_size: int = 4):
@@ -9,7 +11,7 @@ class AbstractCNN(ABC, nn.Module):
         self.n_targets = n_targets
         self.conv_kernel_size = conv_kernel_size
         self.pool_kernel_size = pool_kernel_size
-    
+
     @classmethod
     def output_size_1d_pt(cls, seq_len: int, padding: int, dilation: int, kernel_size: int, stride: int) -> int:
         """

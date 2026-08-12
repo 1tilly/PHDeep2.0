@@ -1,15 +1,18 @@
-import torch.nn as nn
-from src.models.base_model.architecture import AbstractCNN
 from functools import partial
+
+import torch.nn as nn
+
+from src.models.base_model.architecture import AbstractCNN
+
 
 class JellyFishDeepSEA(AbstractCNN):
     def __init__(self, sequence_length, n_targets, dropout=0.2, dropout_freq=6, n_convModules=10, layer_dimensions=None, batch_pool_freq=5):
         super(JellyFishDeepSEA, self).__init__(sequence_length, n_targets)
         if layer_dimensions is None:
             layer_dimensions = (320, 960)
-        
+
         self.conv_net = self.create_conv_net(dropout, dropout_freq, n_convModules, layer_dimensions, batch_pool_freq)
-        
+
         self.classifier = nn.Sequential(
             nn.Linear(self._max_dim * self._n_channels, n_targets),
             nn.ReLU(inplace=True),
@@ -41,7 +44,7 @@ class JellyFishDeepSEA(AbstractCNN):
         self._max_dim = max_dim
         layer_list.append(nn.Conv1d(4, min_dim, kernel_size=self.conv_kernel_size))
         channel_value = conv1d_out(channel_value)
-        
+
         n_convModules = max(2, int(n_convModules))
         n_convModules -= 1 # needed, as we are already adding one convModule to the list for the input
         dim_step = int((max_dim - min_dim) / n_convModules * 2) # factor of 2, as only every second layer has a dim increase
@@ -57,9 +60,9 @@ class JellyFishDeepSEA(AbstractCNN):
         if in_out[-1][-1] != max_dim:
             in_out[-1] = (in_out[-1][0],max_dim)
 
-            
+
         layer_list.append(nn.ReLU(inplace=True)) #second part of the input convolution, the ReLU
-        
+
         counter = 1
         for (i,out) in in_out:
             if counter == 1 and skip_one_layer:
@@ -68,7 +71,7 @@ class JellyFishDeepSEA(AbstractCNN):
                 layer_list.append(nn.Conv1d(i, i, kernel_size=self.conv_kernel_size))
                 layer_list.append(nn.ReLU(inplace=True))
                 channel_value = conv1d_out(channel_value)
-                
+
                 counter += 1
                 if counter%batch_pool_freq == 0:
                     layer_list.append(nn.MaxPool1d(kernel_size=self.pool_kernel_size, stride=self.pool_kernel_size))
@@ -79,7 +82,7 @@ class JellyFishDeepSEA(AbstractCNN):
                     layer_list.append(nn.Dropout(p=dropout))
             layer_list.append(nn.Conv1d(i, out, kernel_size=self.conv_kernel_size))
             channel_value = conv1d_out(channel_value)
-            
+
             counter += 1
             layer_list.append(nn.ReLU(inplace=True))
             if counter%batch_pool_freq == 0:

@@ -1,12 +1,14 @@
 import torch.nn as nn
+
 from src.models.base_model.architecture import AbstractCNN
+
 
 class BlainvilleDeepSEA(AbstractCNN):
     def __init__(self, sequence_length, n_targets):
         super(BlainvilleDeepSEA, self).__init__(sequence_length, n_targets)
-        
-        # 3 Conv1d 1 MaxPool+BatchNorm, 
-        # 3 Conv1d 1 MaxPool+BatchNorm+Dropout, 
+
+        # 3 Conv1d 1 MaxPool+BatchNorm,
+        # 3 Conv1d 1 MaxPool+BatchNorm+Dropout,
         # 2 Conv1d 1 BatchNorm+Dropout
         self.conv_net = nn.Sequential(
             nn.Conv1d(4, 320, kernel_size=self.conv_kernel_size),
@@ -33,7 +35,7 @@ class BlainvilleDeepSEA(AbstractCNN):
             nn.BatchNorm1d(960),
             nn.Dropout(p=0.2)
         )
-        
+
         # Calculate the number of channels after the convolutional layers
         layers = [
             # First set of conv layers and pooling
@@ -52,7 +54,7 @@ class BlainvilleDeepSEA(AbstractCNN):
         ]
 
         self._n_channels = self.calculate_output_channels(self.sequence_length, layers)
-        
+
         self.classifier = nn.Sequential(
             nn.Linear(960 * self._n_channels, self.n_targets),
             nn.ReLU(inplace=True),
@@ -60,7 +62,7 @@ class BlainvilleDeepSEA(AbstractCNN):
             nn.Linear(self.n_targets, self.n_targets),
             nn.Sigmoid()
         )
-        
+
     def forward(self, x):
         out = self.conv_net(x)
         reshape_out = out.view(out.size(0), 960 * self._n_channels)

@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 import torch
 
-
 # ── one_hot_encode unit tests (no fixtures needed) ───────────────────────────
 
 def test_one_hot_encode_correctness():

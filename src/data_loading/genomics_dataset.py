@@ -20,7 +20,6 @@ import pyfaidx
 import torch
 from torch.utils.data import Dataset
 
-
 _ENCODE = {
     "A": 1, "a": 1,
     "C": 2, "c": 2,

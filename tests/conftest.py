@@ -103,7 +103,7 @@ def real_training_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def feature_list(real_training_dir: Path) -> list[str]:
     """Ordered feature labels from the real training directory."""
     return [
-        l.strip()
-        for l in (real_training_dir / "features.txt").read_text().splitlines()
-        if l.strip()
+        line.strip()
+        for line in (real_training_dir / "features.txt").read_text().splitlines()
+        if line.strip()
     ]

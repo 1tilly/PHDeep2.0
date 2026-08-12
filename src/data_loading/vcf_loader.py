@@ -1,7 +1,9 @@
-import os # For path building of paths and checking of file availability
+import os  # For path building of paths and checking of file availability
 import subprocess
-import sys # to stream output of bcftools directly to file
-import pandas as pd # to handle the sample ids file and saving the 
+import sys  # to stream output of bcftools directly to file
+
+import pandas as pd  # to handle the sample ids file and saving the
+
 try:
     from rpy2 import robjects
 except ImportError:  # pragma: no cover - optional dependency
@@ -19,7 +21,7 @@ class BCFParser():
     def __init__(self, bcftools_bin="bcftools", r_home=None):
         self.bcftools_bin = bcftools_bin
         self.r_home = r_home
-        
+
     def load_rpy2(self, path_to_script, r_home=None):
         if robjects is None:
             raise ImportError("rpy2 is required for R integration. Install with project extra: stats")
@@ -57,7 +59,7 @@ class BCFParser():
         pah_samples = sample_info.loc[sample_info["group"].isin([cohort])]
         pah_sample_ids = pah_samples["WGS.ID"].to_list()
         pah_samples["WGS.ID"].to_csv(id_out_path, sep="\t", index=False)
-        
+
         sample_info[["WGS.ID", "labels"]].to_csv(label_out_path, sep="\t", index=False)
         return pah_sample_ids
 
@@ -95,12 +97,12 @@ class BCFParser():
             yield gene_chr, gene_start, gene_end, gene_name, path_to_vcf
 
 
-    
+
     def run_bcftools(self, path_to_vcf, sample_label_path, out_path, release, out_format, gene_name, gene_chr, gene_start, gene_end, pah_sample_ids=None):
     #   Generate BCFtools command
         """
-        This code filters and annotates a BCF file for a specific set of samples 
-            and a genomic region, then queries the modified BCF file to extract data 
+        This code filters and annotates a BCF file for a specific set of samples
+            and a genomic region, then queries the modified BCF file to extract data
             in a specified format.
         The command is as follows:
         "bcftools view -Ou -S ", out.dir, "/samples_included.txt ",
@@ -115,12 +117,12 @@ class BCFParser():
         gene_coords =  f"{gene_chr}:{gene_start}-{gene_end}"
         command_view1 = f"{self.bcftools_bin} view -IOu {path_to_vcf} {gene_coords}" # -I prevents update of AC/AN/AF
         command_plugin = f"{self.bcftools_bin} plugin fill-tags -Ou -- -S {sample_label_path} -t AC,AN,AF,MAF,HWE,NS "
- 
+
         command_query = f"{self.bcftools_bin} query -H -f \"{out_format}\" "
         vcf_out_path = os.path.join(out_path, f'pah_variants_{release}_{gene_name}_{gene_chr}_{gene_start}-{gene_end}.vcf')
         full_cmd = f"{command_view1} | {command_plugin}  | {command_query} > {vcf_out_path}"
-        
-        if pah_sample_ids is not None:  
+
+        if pah_sample_ids is not None:
             command_view_filter = f"{self.bcftools_bin} view -IOu -s {','.join(pah_sample_ids)} "
             full_cmd = f"{command_view1} | {command_plugin} | {command_view_filter} | {command_query} > {vcf_out_path}"
 
@@ -136,7 +138,7 @@ class BCFParser():
         return vcf_out_path
 
 
-    def persist_to_feather(self, vcf_path, pah_IDs, var_output_path): 
+    def persist_to_feather(self, vcf_path, pah_IDs, var_output_path):
         """
         To match the structure of the AVRO files, the columns should be:
         [u'chromosome', u'start', u'end', u'reference', u'alternate',u'uctrl_SD', u'upah_SD', u'uctrl_AC', u'uctrl_AN', u'upah_AC',u'upah_AN']
@@ -145,8 +147,8 @@ class BCFParser():
         with open(vcf_path) as vcf:
             vcf = vcf.read().split("\n")
             if len(vcf)>1:
-                header = filter(lambda l: l.startswith("#"), vcf)
-                head = list(filter(lambda l: not l.startswith("##"), header))[0].split("\t")
+                header = filter(lambda line: line.startswith("#"), vcf)
+                head = list(filter(lambda line: not line.startswith("##"), header))[0].split("\t")
                 head = list(map(lambda x: x.split("]")[1].split(":")[0], head[:-1]))
             else:
                 print(f"No entries for {vcf_path}, writing ommitted")
@@ -164,10 +166,10 @@ class BCFParser():
             vcf["length"] = vcf.REF.str.len()
             vcf["end"] = vcf[["POS","length"]].apply(lambda x: x[0]+(x[1]-1) if x[1]>1 else x[0], axis=1)
 
-            name_dict= {"POS":"start", "CHROM":"chromosome", 
+            name_dict= {"POS":"start", "CHROM":"chromosome",
                     "REF":"reference", "ALT":"alternate"
                     }
-            
+
             def rename_acnf(col):
                 if "AC_" in col or "AN_" in col or "AF_" in col:
                     al,pop = col.split("_")

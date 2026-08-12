@@ -5,7 +5,6 @@ Uses a tiny synthetic dataset and a lightweight model so the tests are
 fast and GPU-free.
 """
 import tempfile
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -21,7 +20,6 @@ from src.training.trainer import (
     get_optimizer,
     set_seed,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny dummy model

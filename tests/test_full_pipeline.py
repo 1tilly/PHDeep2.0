@@ -8,14 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 
 def _read_feature_list(training_dir: Path) -> list[str]:
     return [
-        l.strip()
-        for l in (training_dir / "features.txt").read_text().splitlines()
-        if l.strip()
+        line.strip()
+        for line in (training_dir / "features.txt").read_text().splitlines()
+        if line.strip()
     ]
 
 

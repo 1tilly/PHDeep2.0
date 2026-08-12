@@ -221,11 +221,10 @@ class VariantEffectPredictor:
             region_start = max(0, pos - flank)
             region_end = pos + flank + len(ref_allele)
             ref_region = self._fetch_region(chrom, region_start, region_end)
-            ref_seq_list = list(ref_region)
 
             alt_seq, ref_window = VariantParser.find_variant_in_reference(
                 (chrom, pos, ref_allele, alt_allele),
-                ref_seq_list,
+                ref_region,
                 region_start,
                 self.seq_len,
             )

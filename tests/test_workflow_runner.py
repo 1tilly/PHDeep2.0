@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("pybedtools", reason="pybedtools not installed")
-
 from config.pipeline_config import PipelineConfig
-from src.workflow.runners import LocalRunner, get_runner, run_pipeline
+from src.workflow.runners import get_runner, run_pipeline
+
+pytest.importorskip("pybedtools", reason="pybedtools not installed")
 
 
 def test_run_pipeline_local_bed_to_training(tmp_path):

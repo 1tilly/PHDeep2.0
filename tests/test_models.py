@@ -4,7 +4,6 @@ Forward-pass shape tests for all DeepSEA-family models.
 These tests do not require a GPU or a real dataset — they use random
 tensors to verify that each model produces the correct output shape.
 """
-import pytest
 import torch
 
 SEQ_LEN = 1000

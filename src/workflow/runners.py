@@ -6,8 +6,6 @@ import logging
 from pathlib import Path
 from typing import Any, Protocol
 
-import torch
-
 from config.pipeline_config import PipelineConfig
 
 logger = logging.getLogger(__name__)
@@ -89,7 +87,7 @@ class LocalRunner:
         # Load feature list from the features file produced by bed_to_training
         features_file = tc.train_regions_bed.parent / "features.txt"
         if features_file.exists():
-            feature_list = [l.strip() for l in features_file.read_text().splitlines() if l.strip()]
+            feature_list = [line.strip() for line in features_file.read_text().splitlines() if line.strip()]
         else:
             # Fall back to n_targets integer indices
             feature_list = [str(i) for i in range(tc.n_targets)]
@@ -148,7 +146,10 @@ class LocalRunner:
         if pc.mode == "reference":
             from src.prediction.predict import ReferencePredictor
 
-            predictor = ReferencePredictor(
+            if pc.input_regions_bed is None:
+                raise ValueError("predict.input_regions_bed is required when mode='reference'")
+
+            ref_predictor = ReferencePredictor(
                 model=model,
                 genome_fasta=pc.reference_fasta,
                 seq_len=pc.sequence_length,
@@ -156,7 +157,7 @@ class LocalRunner:
                 batch_size=pc.batch_size,
                 checkpoint_path=pc.model_checkpoint,
             )
-            df = predictor.predict_bed(pc.input_regions_bed)
+            df = ref_predictor.predict_bed(pc.input_regions_bed)
             df.to_feather(out_path)
             return {"mode": "reference", "n_regions": len(df), "output": str(out_path)}
 
@@ -165,7 +166,10 @@ class LocalRunner:
 
             from src.prediction.predict import VariantEffectPredictor
 
-            predictor = VariantEffectPredictor(
+            if pc.input_variants_feather is None:
+                raise ValueError("predict.input_variants_feather is required when mode='variant'")
+
+            var_predictor = VariantEffectPredictor(
                 model=model,
                 genome_fasta=pc.reference_fasta,
                 seq_len=pc.sequence_length,
@@ -174,7 +178,7 @@ class LocalRunner:
                 checkpoint_path=pc.model_checkpoint,
             )
             var_df = pd.read_feather(pc.input_variants_feather)
-            delta_df = predictor.predict_variants(var_df)
+            delta_df = var_predictor.predict_variants(var_df)
             delta_df.to_feather(out_path)
             return {"mode": "variant", "n_variants": len(delta_df), "output": str(out_path)}
 
@@ -193,9 +197,9 @@ class LocalRunner:
         feature_names = None
         if ac.feature_names_file is not None:
             feature_names = [
-                l.strip()
-                for l in Path(ac.feature_names_file).read_text().splitlines()
-                if l.strip()
+                line.strip()
+                for line in Path(ac.feature_names_file).read_text().splitlines()
+                if line.strip()
             ]
 
         agg = aggregate_variant_scores(combined, group_col=ac.group_col, feature_names=feature_names)
@@ -216,6 +220,9 @@ class LocalRunner:
 
         if sc.method == "skat_o":
             from src.statistical_testing.skat_o_test import run_skat_o_from_feather
+
+            if sc.input_scores is None:
+                raise ValueError("stats.input_scores is required when method='skat_o'")
 
             result_df = run_skat_o_from_feather(
                 scores_feather=sc.input_scores,

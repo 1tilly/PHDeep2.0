@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
-
 
 BED_TO_TRAINING_OUTPUT_COLUMNS = ("chrom", "start", "end", "feature")
 PREDICTION_OUTPUT_COLUMNS = ("chromosome", "start", "end", "prediction")

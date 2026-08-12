@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 import pandas as pd
+
 from src.data_loading.bed_loader import BEDParser
 
 

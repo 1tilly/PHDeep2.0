@@ -19,7 +19,6 @@ from src.models.deeper_deepsea.architecture import DeeperDeepSEA
 from src.models.deepsea.architecture import DeepSEA
 from src.models.jellyfish.architecture import JellyFishDeepSEA
 
-
 MODEL_REGISTRY: dict[str, type[nn.Module]] = {
     "deepsea": DeepSEA,
     "deeper_deepsea": DeeperDeepSEA,

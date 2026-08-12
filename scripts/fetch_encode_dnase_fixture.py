@@ -9,7 +9,6 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-
 ENCODE_BASE = "https://www.encodeproject.org"
 # Small released DNase-seq GRCh38 narrowPeak files.
 DEFAULT_ACCESSIONS = ("ENCFF887HIM", "ENCFF668BIL")

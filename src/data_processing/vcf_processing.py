@@ -3,19 +3,20 @@ import pandas as pd
 
 class VariantParser():
 
-    def load_gene(fp): 
+    @staticmethod
+    def load_gene(fp):
         var_df = pd.read_pickle(fp)
         return var_df[var_df.columns[:5].tolist() + var_df.columns[-6:].tolist() + var_df.columns[5:-6].tolist()]
 
 
+    @staticmethod
     def find_variant_in_reference(variant_coord, reference, ref_start, length=2000, focus=200):
         """
 		@param variant_coord: (chrom, pos,ref, alt)
 		"""
         index = int(variant_coord[1]) - int(ref_start)
         ref_length = len(variant_coord[2])
-        ref_ens = reference[index:(index + ref_length)]
-  
+
         assert len(variant_coord[3]) <= focus, f"The alternate length ({len(variant_coord[3])}) is longer than the focus of the network: {focus} "
         result = []
         start_index = int(index - (length - focus) / 2 - (focus - len(variant_coord[3])) / 2)
@@ -38,6 +39,7 @@ class VariantParser():
         return result, reference[start_index:start_index + length]
 
 
+    @staticmethod
     def iterate_through_mutations_in_sequence(ref_seq, ref_start, var_df, seq_len=2000):
         for index, var in var_df.iterrows():
             yield VariantParser.find_variant_in_reference((var.chromosome, var.start, var.reference, var.alternate), ref_seq, ref_start, seq_len)

@@ -1,12 +1,12 @@
+import numpy as np
 import pyfaidx
 
-import numpy as np
 
 class SequenceParser():
     def load_genome_from_fasta(input_path):
         genome = pyfaidx.Fasta(input_path)
         return genome
-    
+
     def get_fasta_ref(chr, start, end, genome):
         if  "chr" in str(chr):
             return genome[chr][int(start)-1:int(end)].seq
@@ -28,5 +28,5 @@ class SequenceParser():
         result = []
         for seq in one_hot_sequence:
             result.append(decode[np.argmax(seq) if not np.all(np.array(seq)== np.array([0,0,0,0])) else -1])
-        
+
         return "".join(result)

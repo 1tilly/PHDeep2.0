@@ -1,10 +1,9 @@
+import logging
 import os.path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
-import logging
-
 from pybedtools import BedTool
 
 # Initialise the logger
@@ -14,7 +13,7 @@ logger = logging.getLogger('bed_loader')
 class BEDParser():
     """
     ! This is really just an ENCODE parser! It should be split into basic bed file functions and a ENCODE parser inheriting from that
-    
+
     """
 
     def __init__(
@@ -84,7 +83,7 @@ class BEDParser():
             "File analysis title",
         ]
 
-        
+
 
     def load_prepare_meta(self, path:str, organism:str, assays:list, columns_of_interest:list, file_type:list=["bed narrowPeak"], assembly:str="hg19"):
         """
@@ -93,16 +92,16 @@ class BEDParser():
         with open(path, "r") as f:
             file = pd.read_csv(f, sep="\t")
 
-        
+
         df = file[(file["Biosample organism"] == organism) &
             (file["Assay"].isin(assays))][columns_of_interest]
         df_ft = df[df["File format"].isin(file_type)]
-        
+
         df_as = df_ft[df_ft["File assembly"] == assembly]
-        
+
         # dropping all rows, that are NA in any of these columns, as they become unusable else.
         df_na = df_as.dropna(subset=["File analysis title", "Biosample term name", "Experiment accession", "Assay"])
-        # The project order makes sure, that the latest version of each experiment is being used withing the assembly.        
+        # The project order makes sure, that the latest version of each experiment is being used withing the assembly.
         return df_na
 
     def generate_feature_exp_dict(self, meta_df):
@@ -118,7 +117,7 @@ class BEDParser():
                     target = "DNase"
                 else:
                     target =  "_".join(row['Experiment target'].split(" "))
-                if not pd.notna(row['Biosample treatments']): 
+                if not pd.notna(row['Biosample treatments']):
                     bio_treat = "None"
                 else:
                     bio_treat = "_".join(row['Biosample treatments'].split(" "))
@@ -128,10 +127,10 @@ class BEDParser():
                     biosam = row['Biosample term name']
                 feature_name = f"{biosam}|{target}|{bio_treat}"
                 if feature_name not in feature_exp_dict.keys() or feature_exp_dict[feature_name] is None:
-                    
+
                     feature_exp_dict[feature_name] = [exp,]
                 else:
-                    
+
                     feature_exp_dict[feature_name].append(exp)
 
         return feature_exp_dict
@@ -155,7 +154,9 @@ class BEDParser():
             return 0
 
 
-        clean_chrom = lambda x: f"chr{x}" if "chr" not in x else x  # chr prefix is needed by selene
+        def clean_chrom(x):
+            # chr prefix is needed by selene
+            return f"chr{x}" if "chr" not in x else x
 
         try:
             res = snps.to_dataframe(header=None)
@@ -221,18 +222,18 @@ class BEDParser():
                                 read_error_log.error(f"FNF: {row['File accession']}:{feature}")
                                 continue
                             if isinstance(tmp, pd.DataFrame):
-                                
+
                                 tmp["feature"] = feature
                                 tmp["peak_size"] = 0
                                 for chr in tmp.chrom.unique():
                                     tmp.loc[tmp["chrom"]==chr, "peak_size"] = tmp[tmp["chrom"]==chr]["end"] - tmp[tmp["chrom"]==chr]["start"]
                                 tmp = tmp[["chrom","start","end","peak_size"]]
-                                
+
                                 if feature_df is not None:
                                     feature_df = feature_df.append(tmp, ignore_index=True)
                                 else:
                                     feature_df = tmp
-                                i += 1 
+                                i += 1
                                 if i % 100 == 0:
                                     print(f"reached experiment iteration: {i}")
 
@@ -246,7 +247,7 @@ class BEDParser():
                     mode="a+",
                     header=False,
                 )
-                
+
             del(feature_df)
 
 
@@ -260,7 +261,7 @@ class BEDParser():
     def choose_assay_version(self, meta_df, assembly="hg19"):
         """
 
-        This function chooses automatically the latest release and most complete bed file per experiment in a specified assembly ('hg19' or 'GRCh38'). 
+        This function chooses automatically the latest release and most complete bed file per experiment in a specified assembly ('hg19' or 'GRCh38').
         """
         proj_order = self.proj_order_37
         if assembly == "GRCh38":
@@ -269,11 +270,11 @@ class BEDParser():
         meta_df["proj_order"] = meta_df["analysis"].apply(lambda x: proj_order.index(x))
         meta_df["bio_len"] = meta_df.bio_repl.str.len()
         meta_df["tech_len"] = meta_df.tech_repl.str.len()
-        meta_df_sort = meta_df.sort_values(["proj_order", "bio_len", "tech_len"], ascending=True) 
+        meta_df_sort = meta_df.sort_values(["proj_order", "bio_len", "tech_len"], ascending=True)
         # This keeps only the assay of each experiment with the highest project order (latest release), the highest number of biological replicates and the highest number of technical replicates
-        meta_df_dup = meta_df_sort.drop_duplicates(subset=["chrom", "start", "end", "assembly"], keep="last") 
+        meta_df_dup = meta_df_sort.drop_duplicates(subset=["chrom", "start", "end", "assembly"], keep="last")
         return meta_df_dup.drop(["proj_order", "bio_len", "tech_len"], axis=1)
-    
+
 
 
     def load_peak_file(self, path:str):
@@ -281,25 +282,25 @@ class BEDParser():
             This is more of a analysis of the dataset. It loads the peak file and plots the heatmap of the peaks per position
         """
         df = pd.read_csv(path, sep="\t", names=["chrom", "start", "end", "peak_size"])
-        
+
         df["peaks"] = 1
 
         # at each position, accumulate how many peaks there are, this is not part of loading anymore and should be its own function
-        
+
 
         # A plot made of a subplot for heatmap plus line plot
         for chr in df.chrom.unique():
             logger.info(f"Working on chromosome {chr}")
             df_chr = df[df.chrom == chr]
             df_chr["positions"] = df_chr.apply(lambda row: list(range(row["start"], row["end"])), axis=1)
-        
+
             df_exp = df_chr.explode("positions")
             df_gb_chr = df_exp[["chrom", "positions", "peaks"]].groupby(by=["chrom", "positions"]).sum()
-        
-            
+
+
             extent = [df_gb_chr.peaks.min(), df_gb_chr.peaks.max(), 0, 1]
             fig, (ax,ax2) = plt.subplots(nrows=2, sharex=True)
-            
+
             ax.imshow(np.expand_dims(df_gb_chr.peaks, axis=0), cmap="plasma", aspect="auto", extent=extent)
             ax.set_yticks([])
             ax.set_xlim(extent[0], extent[1])

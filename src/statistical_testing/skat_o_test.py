@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -109,7 +108,6 @@ def run_skat_o(
 
     # Build null model once (uses phenotype + optional covariates)
     if covariates is not None:
-        cov_r = pandas2ri.py2rpy(covariates.astype(np.float64))
         null_model = skat.SKAT_Null_Model(
             robjects.Formula("y ~ ."),
             data=robjects.r["data.frame"](
