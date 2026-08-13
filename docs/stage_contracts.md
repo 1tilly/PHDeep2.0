@@ -65,41 +65,94 @@ Inputs:
   - reference regions bed (`reference` mode)
   - variants feather/tsv (`variant` mode)
 
-Outputs:
-- table with minimum columns:
-  - `chromosome`
-  - `start`
-  - `end`
-  - `prediction`
+Outputs (`mode=reference`, via `ReferencePredictor.predict_bed`):
+- table with columns:
+  - `chrom`, `start`, `end`
+  - `pred_<i>` for each model output feature `i`
+
+Outputs (`mode=variant`, via `VariantEffectPredictor.predict_variants`):
+- the input variant columns (`chromosome`, `start`, `reference`, `alternate`,
+  plus any caller-supplied metadata columns such as a grouping column) with
+  three columns appended per model output feature `i`:
+  - `ref_pred_<i>`, `alt_pred_<i>`, `delta_<i>` (= `alt_pred_<i> - ref_pred_<i>`)
+- `config.pipeline_config.PREDICTION_OUTPUT_COLUMNS` captures only the
+  fixed `(chromosome, start, reference, alternate)` columns of the
+  `variant` mode output — a fixed-width tuple can't express "three columns
+  per model feature", so the `ref_pred_*`/`alt_pred_*`/`delta_*` columns
+  are not enumerated there.
 
 ## Stage: `aggregate`
 Description:
-Aggregates per-position predictions to per-feature/per-region scores.
+Turns per-variant `predict` (mode=variant) output into the per-variant
+weights table SKAT-O needs, via `build_variant_weights_table`. This is
+**not** collapsed to one row per group/gene — it is one row per variant,
+canonically sorted by `(chromosome, start, end, alternate)`, with a
+`group` column identifying which gene/region each variant belongs to.
 
 Inputs:
-- one or more prediction tables from `predict`
+- one or more `predict` (mode=variant) output tables, all with matching
+  `delta_*`/`ref_pred_*`/`alt_pred_*` columns (the runner rejects mismatched
+  schemas across input files rather than silently NaN-filling them via
+  `pd.concat`)
+- `group_col`: which input column to use for grouping (e.g. `gene_symbol`)
 
 Outputs:
-- score table with minimum columns:
-  - `chromosome`
-  - `start`
-  - `end`
-  - `score`
+- `output_scores` (required): the per-variant weights table.
+  `config.pipeline_config.AGGREGATION_OUTPUT_COLUMNS` is the exact column
+  list: `variant_id, chromosome, start, end, reference, alternate, group,
+  n_features, eis_ref, eis_alt, eis_diff, abs_delta_max, abs_delta_sum,
+  l2_delta`. `eis_ref`/`eis_alt` are per-variant sums of ref/alt
+  predictions across model features; `eis_diff` is their difference;
+  `abs_delta_max`/`abs_delta_sum`/`l2_delta` summarize the per-feature
+  delta vector. Rows with a null `group_col` value are retained (not
+  dropped), with `group` set to null.
+- `output_genotypes` (optional, requires `sample_ids_file`): a variant x
+  sample genotype (dosage) matrix, via `build_genotype_matrix`, in the
+  same variant order as `output_scores`. Columns:
+  `config.pipeline_config.GENOTYPE_MATRIX_KEY_COLUMN` (`variant_id`) plus
+  one integer column per sample id, values in `{0, 1, 2, 9}` (9 = missing
+  genotype call).
+- `output_group_summary` (optional): the older one-row-per-group summary
+  from `aggregate_variant_scores`, kept for callers that still want a
+  group-level rollup rather than per-variant weights.
 
 ## Stage: `stats`
 Description:
-Consumes aggregated score tables for association testing.
+Runs SKAT-O per group (gene/region) on a real genotype matrix and a real
+per-sample phenotype, via `run_skat_o_from_feather`.
 
 Inputs:
-- aggregated score table
-- method config (`skat_o`, `fisher`, or `none`)
+- `input_scores`: the `aggregate` stage's `output_scores` (per-variant
+  weights table)
+- `input_genotypes`: the `aggregate` stage's `output_genotypes` (variant x
+  sample dosage matrix)
+- `phenotype_table` (**required**, cohort input this pipeline does not
+  generate): a feather or TSV file with a sample-id column
+  (`sample_id_col`, default `sample_id`) and a phenotype column
+  (`phenotype_col`, default `phenotype`, values `1`=case/`0`=control).
+  Real per-sample phenotypes (and, for a full analysis, covariates and
+  kinship) must come from the cohort's own data management — nothing in
+  this pipeline synthesizes them.
+- `group_col` (default `group`), `weight_col` (optional per-variant weight
+  column from `input_scores`, e.g. `eis_diff` or `abs_delta_max`),
+  `min_variants` (groups with fewer variants are skipped), `method`
+  (default `"optimal.adj"`)
 
 Outputs:
-- result table with minimum columns:
-  - `feature_id`
-  - `p_value`
-  - `q_value`
-  - `effect_size`
+- result table with columns (`config.pipeline_config.STATS_OUTPUT_COLUMNS`):
+  `feature_id, n_variants, n_samples, p_value, p_value_burden,
+  p_value_skat, q_value, weight`, sorted by `p_value` ascending.
+  - There is no `effect_size` column: SKAT-O is a variance-component test
+    and does not produce one.
+  - `q_value` is a real Benjamini-Hochberg FDR correction (`bh_fdr`) over
+    `p_value`, not the old mislabeled Bonferroni value.
+
+Not yet ported from the original pipeline (future work):
+- kinship/familial null models (the current null model assumes unrelated
+  samples)
+- sliding-window region grouping
+- the Fisher/Barnard contingency-table testing arm (`method="fisher"` is
+  declared in `StatsConfig` but not implemented)
 
 ## Backend Boundary
 The contracts above are backend-neutral.

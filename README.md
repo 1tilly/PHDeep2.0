@@ -16,7 +16,7 @@ Trained model (checkpoint)
         ↓  VariantEffectPredictor
 Per-variant Δ scores (alt − ref)
         ↓  aggregation
-Gene/enhancer-level scores → SKAT-O
+Per-variant weights (grouped by gene/region) → SKAT-O
 ```
 
 ## Model zoo
@@ -165,7 +165,7 @@ src/
   prediction/
     predict.py             Reference and variant effect prediction
   post_prediction/
-    aggregation.py         Gene/enhancer-level score aggregation
+    aggregation.py         Per-variant weight table + genotype matrix aggregation
   statistical_testing/
     skat_o_test.py         SKAT-O wrapper (requires R extra)
   workflow/
@@ -190,8 +190,9 @@ The models follow the DeepSEA family (Zhou & Troyanskaya, Nature Methods
 2015) — convolutional networks trained to predict chromatin accessibility,
 transcription factor binding, and histone marks from raw DNA sequence.
 Variant effect scores are computed as the difference in predicted activity
-between reference and alternate alleles, then aggregated over gene-linked
-enhancers for burden testing via SKAT-O.
+between reference and alternate alleles, then turned into a per-variant
+weights table (grouped by whatever `group_col` the caller supplies — e.g.
+gene symbol) for burden/variance-component testing via SKAT-O.
 
 ## References
 

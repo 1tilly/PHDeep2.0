@@ -8,9 +8,21 @@ from pathlib import Path
 from typing import Any, Literal
 
 BED_TO_TRAINING_OUTPUT_COLUMNS = ("chrom", "start", "end", "feature")
-PREDICTION_OUTPUT_COLUMNS = ("chromosome", "start", "end", "prediction")
-AGGREGATION_OUTPUT_COLUMNS = ("chromosome", "start", "end", "score")
-STATS_OUTPUT_COLUMNS = ("feature_id", "p_value", "q_value", "effect_size")
+# `predict` (mode="variant") output has these columns plus one
+# ref_pred_<i>/alt_pred_<i>/delta_<i> triple per model output feature — a
+# fixed-width tuple can't express "one per model feature", so only the
+# fixed columns are captured here; see docs/stage_contracts.md.
+PREDICTION_OUTPUT_COLUMNS = ("chromosome", "start", "reference", "alternate")
+AGGREGATION_OUTPUT_COLUMNS = (
+    "variant_id", "chromosome", "start", "end", "reference", "alternate",
+    "group", "n_features", "eis_ref", "eis_alt", "eis_diff",
+    "abs_delta_max", "abs_delta_sum", "l2_delta",
+)
+GENOTYPE_MATRIX_KEY_COLUMN = "variant_id"
+STATS_OUTPUT_COLUMNS = (
+    "feature_id", "n_variants", "n_samples", "p_value",
+    "p_value_burden", "p_value_skat", "q_value", "weight",
+)
 
 
 def _to_path(value: str | Path) -> Path:
@@ -72,6 +84,9 @@ class AggregateConfig:
     output_scores: Path
     group_col: str = "gene_symbol"
     feature_names_file: Path | None = None
+    sample_ids_file: Path | None = None
+    output_genotypes: Path | None = None
+    output_group_summary: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -79,6 +94,13 @@ class StatsConfig:
     method: Literal["skat_o", "fisher", "none"] = "skat_o"
     input_scores: Path | None = None
     output_results: Path | None = None
+    input_genotypes: Path | None = None
+    phenotype_table: Path | None = None
+    sample_id_col: str = "sample_id"
+    phenotype_col: str = "phenotype"
+    group_col: str = "group"
+    weight_col: str | None = None
+    min_variants: int = 2
 
 
 @dataclass(frozen=True)
@@ -159,6 +181,9 @@ class PipelineConfig:
                 output_scores=_to_path(aggregate_data["output_scores"]),
                 group_col=aggregate_data.get("group_col", "gene_symbol"),
                 feature_names_file=_to_path(aggregate_data["feature_names_file"]) if aggregate_data.get("feature_names_file") else None,
+                sample_ids_file=_to_path(aggregate_data["sample_ids_file"]) if aggregate_data.get("sample_ids_file") else None,
+                output_genotypes=_to_path(aggregate_data["output_genotypes"]) if aggregate_data.get("output_genotypes") else None,
+                output_group_summary=_to_path(aggregate_data["output_group_summary"]) if aggregate_data.get("output_group_summary") else None,
             )
 
         stats_cfg = None
@@ -167,6 +192,13 @@ class PipelineConfig:
                 method=stats_data.get("method", "skat_o"),
                 input_scores=_to_path(stats_data["input_scores"]) if stats_data.get("input_scores") else None,
                 output_results=_to_path(stats_data["output_results"]) if stats_data.get("output_results") else None,
+                input_genotypes=_to_path(stats_data["input_genotypes"]) if stats_data.get("input_genotypes") else None,
+                phenotype_table=_to_path(stats_data["phenotype_table"]) if stats_data.get("phenotype_table") else None,
+                sample_id_col=stats_data.get("sample_id_col", "sample_id"),
+                phenotype_col=stats_data.get("phenotype_col", "phenotype"),
+                group_col=stats_data.get("group_col", "group"),
+                weight_col=stats_data.get("weight_col"),
+                min_variants=int(stats_data.get("min_variants", 2)),
             )
 
         config = cls(
@@ -214,6 +246,19 @@ class PipelineConfig:
                 raise ValueError("predict.input_variants_feather is required when mode='variant'")
             if self.predict.mode == "variant" and self.predict.input_regions_bed is not None:
                 raise ValueError("predict.input_regions_bed should not be set when mode='variant'")
+
+        if "stats" in self.stage_order and self.stats is not None and self.stats.method == "skat_o":
+            if (
+                self.stats.input_scores is None
+                or self.stats.input_genotypes is None
+                or self.stats.phenotype_table is None
+            ):
+                raise ValueError(
+                    "stats.input_scores, stats.input_genotypes, and stats.phenotype_table "
+                    "are all required when method='skat_o' — these are cohort inputs "
+                    "(per-sample genotypes and phenotype) that this pipeline does not "
+                    "generate."
+                )
 
 
 def load_pipeline_config(config_path: str | Path) -> PipelineConfig:

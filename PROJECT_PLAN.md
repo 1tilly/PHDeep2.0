@@ -40,6 +40,27 @@ Reach functional parity with the original `PhDeep` feature set while making `PHD
 - Hardened `bed_to_training` by replacing deprecated dataframe append flow with concat.
 - Added portability guardrail test for hardcoded site paths: `tests/test_portability_guardrails.py`.
 
+### 2026-08-13
+- Rewrote `src/post_prediction/aggregation.py` (PH2-019): added
+  `build_variant_weights_table` (per-variant weights, not collapsed to
+  one row per group) and `build_genotype_matrix`; fixed the doubled-label
+  bug in `aggregate_variant_scores`; removed the dead/wrong-shape
+  `build_skat_input`.
+- Rewrote `src/statistical_testing/skat_o_test.py` (PH2-020): `run_skat_o`
+  and `run_skat_o_from_feather` now take real genotype/phenotype inputs
+  and a pluggable `SkatBackend` (module import never requires rpy2); added
+  `bh_fdr` for real Benjamini-Hochberg q-values.
+- Rewired `config/pipeline_config.py` and `src/workflow/runners.py` to the
+  corrected `aggregate`/`stats` contracts (new `AggregateConfig`/
+  `StatsConfig` fields, `_run_aggregate`/`_run_stats` updated to match,
+  `group_col`/`weight_col`/`min_variants` now actually threaded through to
+  `run_skat_o_from_feather`), and corrected the `predict`/`aggregate`/
+  `stats` sections of `docs/stage_contracts.md`.
+- Phase 2 remains deferred future work: real genotype extraction from a
+  cohort's actual VCF/BCF data (today's `build_genotype_matrix` only
+  recodes genotype columns already present on the input DataFrame), cohort
+  phenotype/covariate ingestion, and familial/kinship null models.
+
 ## Milestones
 
 ### M0 - Baseline and Guardrails (Week 1)
@@ -134,8 +155,8 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | PH2-016 | M3 | Implement canonical training loop CLI and checkpointing | P0 | PH2-014, PH2-015, PH2-005 | todo | `train` command runs end-to-end locally |
 | PH2-017 | M3 | Add deterministic seed and reproducibility checks | P1 | PH2-016 | todo | Repeat runs within expected variance |
 | PH2-018 | M4 | Implement prediction pipeline CLI (`reference`, `variant`) | P0 | PH2-011, PH2-016 | todo | Prediction artifacts produced for fixtures |
-| PH2-019 | M4 | Implement post-prediction aggregation and scoring | P0 | PH2-018 | todo | Aggregated outputs match schema and tests |
-| PH2-020 | M4 | Define stats handoff contract and export format | P1 | PH2-019 | todo | Contract doc + integration tests complete |
+| PH2-019 | M4 | Implement post-prediction aggregation and scoring | P0 | PH2-018 | done | Aggregated outputs match schema and tests |
+| PH2-020 | M4 | Define stats handoff contract and export format | P1 | PH2-019 | done | Contract doc + integration tests complete |
 | PH2-021 | M4 | Add optional R/BCF adapter wrappers | P2 | PH2-020, PH2-007 | todo | Optional adapters enabled by extras only |
 | PH2-022 | M5 | Implement local workflow runner over stage graph | P0 | PH2-007, PH2-010, PH2-016, PH2-019 | in_progress | Full mini pipeline runnable from one command |
 | PH2-023 | M5 | Implement Slurm workflow adapter using same stage graph | P1 | PH2-022, PH2-008 | todo | Same graph executes via Slurm config |

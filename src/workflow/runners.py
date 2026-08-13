@@ -189,9 +189,27 @@ class LocalRunner:
 
         import pandas as pd
 
-        from src.post_prediction.aggregation import aggregate_variant_scores
+        from src.post_prediction.aggregation import (
+            aggregate_variant_scores,
+            build_genotype_matrix,
+            build_variant_weights_table,
+        )
 
         dfs = [pd.read_feather(p) for p in ac.input_predictions]
+
+        # Guard against pd.concat silently NaN-filling mismatched schemas.
+        column_sets = [frozenset(df.columns) for df in dfs]
+        if len(set(column_sets)) > 1:
+            disagreeing = [
+                str(p) for p, cols in zip(ac.input_predictions, column_sets)
+                if cols != column_sets[0]
+            ]
+            raise ValueError(
+                "Input prediction feathers have mismatched columns; "
+                f"the following file(s) disagree with {ac.input_predictions[0]}: "
+                f"{', '.join(disagreeing)}"
+            )
+
         combined = pd.concat(dfs, ignore_index=True)
 
         feature_names = None
@@ -202,13 +220,50 @@ class LocalRunner:
                 if line.strip()
             ]
 
-        agg = aggregate_variant_scores(combined, group_col=ac.group_col, feature_names=feature_names)
+        weights = build_variant_weights_table(combined, group_col=ac.group_col)
 
         out_path = Path(ac.output_scores)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        agg.to_feather(out_path)
+        weights.to_feather(out_path)
 
-        return {"n_groups": len(agg), "group_col": ac.group_col, "output": str(out_path)}
+        summary: dict = {
+            "n_variants": len(weights),
+            "n_groups": weights["group"].dropna().nunique(),
+            "n_ungrouped": int(weights["group"].isna().sum()),
+            "group_col": ac.group_col,
+            "output": str(out_path),
+        }
+
+        if ac.sample_ids_file is not None:
+            if ac.output_genotypes is None:
+                raise ValueError(
+                    "aggregate.output_genotypes is required when "
+                    "aggregate.sample_ids_file is set."
+                )
+            sample_ids = [
+                line.strip()
+                for line in Path(ac.sample_ids_file).read_text().splitlines()
+                if line.strip()
+            ]
+            genotypes = build_genotype_matrix(combined, sample_ids)
+
+            genotypes_path = Path(ac.output_genotypes)
+            genotypes_path.parent.mkdir(parents=True, exist_ok=True)
+            genotypes.to_feather(genotypes_path)
+
+            summary["n_samples"] = len(sample_ids)
+            summary["output_genotypes"] = str(genotypes_path)
+
+        if ac.output_group_summary is not None:
+            group_summary = aggregate_variant_scores(
+                combined, group_col=ac.group_col, feature_names=feature_names
+            )
+            group_summary_path = Path(ac.output_group_summary)
+            group_summary_path.parent.mkdir(parents=True, exist_ok=True)
+            group_summary.to_feather(group_summary_path)
+            summary["output_group_summary"] = str(group_summary_path)
+
+        return summary
 
     def _run_stats(self, config: PipelineConfig) -> dict:
         if config.stats is None:
@@ -221,14 +276,27 @@ class LocalRunner:
         if sc.method == "skat_o":
             from src.statistical_testing.skat_o_test import run_skat_o_from_feather
 
-            if sc.input_scores is None:
-                raise ValueError("stats.input_scores is required when method='skat_o'")
+            if sc.input_scores is None or sc.input_genotypes is None or sc.phenotype_table is None:
+                raise ValueError(
+                    "stats.input_scores, stats.input_genotypes, and "
+                    "stats.phenotype_table are all required when method='skat_o'"
+                )
 
             result_df = run_skat_o_from_feather(
-                scores_feather=sc.input_scores,
+                sc.input_scores,
+                sc.input_genotypes,
+                sc.phenotype_table,
+                sample_col=sc.sample_id_col,
+                phenotype_col=sc.phenotype_col,
                 output_path=sc.output_results,
+                weight_col=sc.weight_col,
+                group_col=sc.group_col,
+                min_variants=sc.min_variants,
             )
-            return {"method": "skat_o", "n_tests": len(result_df), "output": str(sc.output_results)}
+            result: dict = {"method": "skat_o", "n_tests": len(result_df)}
+            if sc.output_results is not None:
+                result["output"] = str(sc.output_results)
+            return result
 
         raise NotImplementedError(f"Stats method '{sc.method}' is not implemented.")
 
