@@ -1,6 +1,6 @@
 # PHDeep2.0 Project Plan
 
-Last updated: 2026-02-15
+Last updated: 2026-08-13
 
 ## Goal
 Reach functional parity with the original `PhDeep` feature set while making `PHDeep2.0` infrastructure-independent:
@@ -41,6 +41,46 @@ Reach functional parity with the original `PhDeep` feature set while making `PHD
 - Added portability guardrail test for hardcoded site paths: `tests/test_portability_guardrails.py`.
 
 ### 2026-08-13
+- Merged `feature/pipeline-modernisation` into `main` — the June/July 2026
+  work (modern PyTorch pipeline: model zoo, training loop, prediction, CI,
+  full pipeline wiring, data download scripts) had sat on a branch for
+  ~5 months, pushed to GitLab only, never merged anywhere, and had never
+  been checked by CI even once. See `docs/2026-08-13-session-handover.md`
+  for the full narrative; summary below.
+- First-ever CI run (post-merge) failed on all four jobs. Fixed for real,
+  not band-aided:
+  - `pyproject.toml` packaging excluded `config/` from the built package —
+    `src/workflow/runners.py` and `main.py` import it, so the installed
+    wheel itself was broken, not just tests.
+  - `pyarrow` was missing as a dependency despite `df.to_feather()` being
+    used across `runners.py`, `skat_o_test.py`, and `vcf_loader.py`.
+  - 5 real mypy errors (variable-narrowing in `runners.py`'s predict
+    branches; `VariantParser`'s methods missing `@staticmethod`) and a
+    ruff sweep (unsorted/unused imports, a dead module-level `import torch`
+    that defeated the file's own lazy-import design).
+  - `uv.lock` had 8 packages pinned at versions with known, since-patched
+    CVEs (transitive, via torch/pytest/build tooling) — regenerated via
+    `uv lock --upgrade`, verified 0/86 flagged against OSV.dev afterward.
+- Hardened `VariantParser.find_variant_in_reference` (PH2-011,
+  `src/data_processing/vcf_processing.py`): had zero test coverage despite
+  being the core SNV/INS/DEL window-construction logic. Found and fixed a
+  real bug — variants near the start/end of a fetched reference window hit
+  negative/out-of-range slice indices, which Python doesn't error on; it
+  silently returns a wrong, sometimes fully-fabricated sequence from the
+  wrong genomic locus. Fixed with explicit `'N'`-padding (matching the
+  codebase's existing convention elsewhere), 24 new tests.
+- Fixed a 1-based/0-based coordinate off-by-one in
+  `VariantEffectPredictor.predict_variants`
+  (`src/prediction/predict.py`): VCF `POS` is 1-based; the code used it
+  directly as a 0-based offset into a pyfaidx-fetched (0-based) window, so
+  the alt allele was spliced in one base past the true variant locus on
+  **every** prediction, silently — nothing validated the fetched reference
+  base against the VCF's own `reference` allele. This invalidates any
+  variant-effect prediction output produced before this fix. Added
+  `_variant_window()`, a non-raising ref-allele sanity-check warning, 8 new
+  tests in `tests/test_predict.py`. `ReferencePredictor` (BED-based,
+  non-variant path) confirmed unaffected — different, already-0-based
+  coordinate source.
 - Rewrote `src/post_prediction/aggregation.py` (PH2-019): added
   `build_variant_weights_table` (per-variant weights, not collapsed to
   one row per group) and `build_genotype_matrix`; fixed the doubled-label
@@ -147,16 +187,16 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | PH2-008 | M1 | Add backend adapters (`SlurmRunner`, `AwsBatchRunner`) as optional modules | P1 | PH2-007 | todo | Adapters can be imported without affecting core |
 | PH2-009 | M2 | Repair and finalize BED parser API | P0 | PH2-003, PH2-005 | in_progress | BED parser passes unit tests on fixtures |
 | PH2-010 | M2 | Rebuild `bed_to_training` workflow using parser API | P0 | PH2-009 | in_progress | Feature list + training bed outputs reproducible |
-| PH2-011 | M2 | Harden genome/variant sequence generation (`vcf_processing`) | P0 | PH2-003 | todo | Sequence mutation cases (SNV/INS/DEL) validated |
-| PH2-012 | M2 | Harden GeneHancer/GFF parser behavior and errors | P1 | PH2-003 | todo | Unsupported paths raise explicit typed errors |
+| PH2-011 | M2 | Harden genome/variant sequence generation (`vcf_processing`) | P0 | PH2-003 | done | Sequence mutation cases (SNV/INS/DEL) validated |
+| PH2-012 | M2 | ~~Harden GeneHancer/GFF parser~~ Rescope as generic annotation-join stage | P2 | none yet exists | blocked | See note below |
 | PH2-013 | M2 | Build golden fixture dataset and expected outputs | P0 | PH2-009, PH2-010, PH2-011 | todo | Fixtures versioned; regression tests pass |
 | PH2-014 | M3 | Fix model module import structure and package paths | P0 | PH2-003, PH2-001 | todo | Model modules import by package path only |
 | PH2-015 | M3 | Correct channel-size calculation and model shape tests | P0 | PH2-014 | todo | Forward pass succeeds with shape assertions |
 | PH2-016 | M3 | Implement canonical training loop CLI and checkpointing | P0 | PH2-014, PH2-015, PH2-005 | todo | `train` command runs end-to-end locally |
 | PH2-017 | M3 | Add deterministic seed and reproducibility checks | P1 | PH2-016 | todo | Repeat runs within expected variance |
-| PH2-018 | M4 | Implement prediction pipeline CLI (`reference`, `variant`) | P0 | PH2-011, PH2-016 | todo | Prediction artifacts produced for fixtures |
+| PH2-018 | M4 | Implement prediction pipeline CLI (`reference`, `variant`) | P0 | PH2-011, PH2-016 | in_progress | Prediction artifacts produced for fixtures |
 | PH2-019 | M4 | Implement post-prediction aggregation and scoring | P0 | PH2-018 | done | Aggregated outputs match schema and tests |
-| PH2-020 | M4 | Define stats handoff contract and export format | P1 | PH2-019 | done | Contract doc + integration tests complete |
+| PH2-020 | M4 | Define stats handoff contract and export format (Phase 1: shape-correct, mockable; Phase 2 deferred, see note below) | P1 | PH2-019 | done | Contract doc + integration tests complete |
 | PH2-021 | M4 | Add optional R/BCF adapter wrappers | P2 | PH2-020, PH2-007 | todo | Optional adapters enabled by extras only |
 | PH2-022 | M5 | Implement local workflow runner over stage graph | P0 | PH2-007, PH2-010, PH2-016, PH2-019 | in_progress | Full mini pipeline runnable from one command |
 | PH2-023 | M5 | Implement Slurm workflow adapter using same stage graph | P1 | PH2-022, PH2-008 | todo | Same graph executes via Slurm config |
@@ -164,6 +204,37 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | PH2-025 | M6 | CI pipeline with lint/type/tests/build matrix | P0 | PH2-004, PH2-013, PH2-016, PH2-019 | todo | CI required checks enforced on main |
 | PH2-026 | M6 | Migration guide from original `PhDeep` | P1 | PH2-010, PH2-016, PH2-019 | todo | Docs include command mapping + caveats |
 | PH2-027 | M6 | Release candidate checklist and tagging process | P1 | PH2-025, PH2-026 | todo | v0 parity RC tagged with release notes |
+
+**Note on PH2-012 (GeneHancer):** investigated 2026-08-13 before starting any
+work. `GeneHancerParser`/`gff_loader.py` has zero callers anywhere in the
+modern pipeline and is itself half-finished (`NotImplementedError` stubs).
+Tracing the original `PhDeep` usage (`runners/export_bcf.py`,
+`scratch/analysis/base_FishersSkat.py`) found the gene-linkage code path was
+never actually live even there — a real bug (`pah_coord.append(...)`,
+pandas `.append` isn't in-place) meant enhancer regions never reached the
+export loop, and the downstream gene-set SKAT block was commented out.
+GeneHancer's data is also license-gated (not freely redistributable) and
+unversioned in this repo — a portability problem for the "infrastructure-
+independent" goal. Rescoped and deprioritized to P2: if ever needed, as a
+generic "join an annotation source onto variants to produce a grouping
+column" stage (so ENCODE-cCRE/GTEx-eQTL work too, not just GeneHancer),
+explicitly deferred until a variant-extraction stage exists to plug into.
+The immediate practical gap (SKAT-O needing a `group` column) is already
+closed for free: `VariantEffectPredictor.predict_variants` passes through
+any column already present on the input feather, so `group_col` can simply
+be supplied externally today.
+
+**Note on PH2-020 Phase 2 (stats, deferred):** Phase 1 (this session) fixed
+the aggregate/stats boundary's *shape* — a real genotype matrix and real
+phenotype now flow through a testable, mockable contract. Not yet ported
+from the original: actual genotype extraction from a cohort's VCF/BCF
+(`build_genotype_matrix` today only recodes genotype columns already
+present on its input), cohort phenotype/covariate/kinship ingestion,
+familial/EMMAX null models, sliding-window region grouping with frame
+shift, and the Fisher/Barnard/Boschloo contingency arm. All blocked on
+controlled-access research data and an R+SKAT toolchain not present in this
+dev environment — building now would mean untested code against imaginary
+inputs. See `docs/2026-08-13-session-handover.md` for the full detail.
 
 ## Dependency Graph
 
