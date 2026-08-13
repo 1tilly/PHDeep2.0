@@ -1,4 +1,17 @@
+from __future__ import annotations
+
 import pandas as pd
+
+
+def _padded_slice(seq: str, start: int, end: int) -> str:
+    width = end - start
+    if width <= 0:
+        return ""
+    lo, hi = max(0, start), min(len(seq), end)
+    core = seq[lo:hi] if lo < hi else ""
+    left = min(width, max(0, -start))
+    right = width - left - len(core)
+    return "N" * left + core + "N" * right
 
 
 class VariantParser():
@@ -10,33 +23,38 @@ class VariantParser():
 
 
     @staticmethod
-    def find_variant_in_reference(variant_coord, reference, ref_start, length=2000, focus=200):
+    def find_variant_in_reference(
+        variant_coord, reference: str, ref_start: int, length: int = 2000, focus: int = 200
+    ) -> tuple[str, str]:
         """
-		@param variant_coord: (chrom, pos,ref, alt)
+		@param variant_coord: (chrom, pos, ref, alt)
+
+		Splices the variant's alternate allele into the reference sequence and returns
+		a window around it, alongside the matching unmodified reference window. Both
+		returned sequences are exactly `length` long and mutually aligned (same offsets
+		outside the variant). Where the window falls outside the bounds of `reference`,
+		it is padded with 'N'. `focus` only constrains how long the alternate allele may
+		be (see the assertion below) and does not otherwise affect the output.
 		"""
         index = int(variant_coord[1]) - int(ref_start)
         ref_length = len(variant_coord[2])
+        alt = variant_coord[3]
 
-        assert len(variant_coord[3]) <= focus, f"The alternate length ({len(variant_coord[3])}) is longer than the focus of the network: {focus} "
-        result = []
-        start_index = int(index - (length - focus) / 2 - (focus - len(variant_coord[3])) / 2)
-        end_index = int(index + ref_length + (length - focus) / 2 + (focus - len(variant_coord[3])) / 2)
-        # The following is handling all cases: Substitution, Insertion and Deletion. It takes the whole reference up to the
-        #   variant start, then appends the variant itself (in case of a deletion it is shorter than before, in case of an insertion longer)
-        #   then adds the last bit of the reference, from starting index+ref_length to our result. This way the length difference of
-        #   InDels is handled.
-        result.extend(reference[start_index:index])
-        result.extend(variant_coord[3])
-        result.extend(reference[index + ref_length:end_index])
-        result = "".join(result)
-        diff = length - len(result)
-        if diff > 0:
-            print(f"Adding {diff} basepairs in the end.")
-            result = result + reference[end_index:end_index + diff]
-        elif diff < 0:
-            print(f"Erasing {diff} basepairs in the end")
-            result = result[:length]
-        return result, reference[start_index:start_index + length]
+        assert len(alt) <= focus, f"The alternate length ({len(alt)}) is longer than the focus of the network: {focus} "
+
+        pre_len = -(-(length - len(alt)) // 2)   # ceil((length - len(alt)) / 2)
+        post_len = length - pre_len - len(alt)
+        start_index = index - pre_len
+        end_index = index + ref_length + post_len
+
+        alt_seq = (
+            _padded_slice(reference, start_index, index)
+            + alt
+            + _padded_slice(reference, index + ref_length, end_index)
+        )
+        ref_window = _padded_slice(reference, start_index, start_index + length)
+
+        return alt_seq, ref_window
 
 
     @staticmethod
