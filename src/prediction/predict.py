@@ -27,6 +27,20 @@ from src.data_loading.genomics_dataset import one_hot_encode
 logger = logging.getLogger(__name__)
 
 
+def _variant_window(pos_1based: int, ref_len: int, flank: int) -> tuple[int, int, int]:
+    """Convert a 1-based VCF POS into 0-based half-open pyfaidx bounds.
+
+    Returns (pos0, region_start, region_end): region_start/region_end are
+    0-based half-open slice bounds for fetching the reference window, and
+    pos0 is the 0-based coordinate of the variant's first reference base
+    (i.e. pos0 - region_start is the variant's offset within the window).
+    """
+    pos0 = pos_1based - 1
+    region_start = max(0, pos0 - flank)
+    region_end = pos0 + flank + ref_len
+    return pos0, region_start, region_end
+
+
 def _load_model(model: nn.Module, checkpoint_path: str | Path, device: torch.device) -> nn.Module:
     """Load model weights from a checkpoint file."""
     ckpt = torch.load(checkpoint_path, map_location=device)
@@ -194,11 +208,12 @@ class VariantEffectPredictor:
             results.append(self.model(batch).cpu().numpy())
         return np.concatenate(results, axis=0)
 
-    def predict_variants(self, var_df: pd.DataFrame, frame_length: int = 500) -> pd.DataFrame:
+    def predict_variants(self, var_df: pd.DataFrame) -> pd.DataFrame:
         """
         Compute ref and alt predictions for every row in `var_df`.
 
         Expected columns in var_df: chromosome, start, reference, alternate.
+        `start` is the variant's VCF POS (1-based).
 
         Returns
         -------
@@ -216,14 +231,23 @@ class VariantEffectPredictor:
             ref_allele = str(var["reference"])
             alt_allele = str(var["alternate"])
 
-            # Fetch a padded reference window centred on the variant
+            # Fetch a padded reference window centred on the variant.
+            # VCF POS is 1-based; pyfaidx is 0-based half-open.
             flank = self.seq_len // 2
-            region_start = max(0, pos - flank)
-            region_end = pos + flank + len(ref_allele)
+            pos0, region_start, region_end = _variant_window(pos, len(ref_allele), flank)
             ref_region = self._fetch_region(chrom, region_start, region_end)
 
+            offset = pos0 - region_start
+            if 0 <= offset and offset + len(ref_allele) <= len(ref_region):
+                fetched_ref = ref_region[offset: offset + len(ref_allele)].upper()
+                if fetched_ref != ref_allele.upper():
+                    logger.warning(
+                        "Reference allele mismatch at %s:%s — expected %s, found %s",
+                        chrom, pos, ref_allele, fetched_ref,
+                    )
+
             alt_seq, ref_window = VariantParser.find_variant_in_reference(
-                (chrom, pos, ref_allele, alt_allele),
+                (chrom, pos0, ref_allele, alt_allele),
                 ref_region,
                 region_start,
                 self.seq_len,
