@@ -1,0 +1,3 @@
+enhancer
+CTCF_binding_site
+promoter

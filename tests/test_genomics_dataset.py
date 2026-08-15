@@ -1,7 +1,9 @@
 """Tests for GenomicsDataset and one_hot_encode.
 
-Fixtures `real_fasta`, `real_training_dir`, and `feature_list` are defined
-in conftest.py and backed by real GRCh38 data (Ensembl REST API).
+Fixtures `golden_genome`, `golden_training_dir`, and `golden_feature_list` are
+defined in conftest.py and backed by the frozen PH2-013 golden fixture
+(`tests/data/golden_pipeline/`, real GRCh38 chr22 data captured once via
+`scripts/fetch_golden_genome_fixture.py` -- no live network call at test time).
 """
 from __future__ import annotations
 
@@ -39,26 +41,26 @@ def test_one_hot_encode_lowercase():
 
 # ── Dataset tests (require real genome fixtures) ─────────────────────────────
 
-def test_dataset_loads(real_fasta, real_training_dir, feature_list):
+def test_dataset_loads(golden_genome, golden_training_dir, golden_feature_list):
     from src.data_loading.genomics_dataset import GenomicsDataset
 
     ds = GenomicsDataset(
-        bed_path=real_training_dir / "training_regions.bed",
-        genome_fasta=real_fasta,
-        feature_list=feature_list,
+        bed_path=golden_training_dir / "training_regions.bed",
+        genome_fasta=golden_genome,
+        feature_list=golden_feature_list,
         seq_len=1000,
     )
     assert len(ds) > 0
 
 
-def test_dataset_item_shapes(real_fasta, real_training_dir, feature_list):
+def test_dataset_item_shapes(golden_genome, golden_training_dir, golden_feature_list):
     from src.data_loading.genomics_dataset import GenomicsDataset
 
-    n_targets = len(feature_list)
+    n_targets = len(golden_feature_list)
     ds = GenomicsDataset(
-        bed_path=real_training_dir / "training_regions.bed",
-        genome_fasta=real_fasta,
-        feature_list=feature_list,
+        bed_path=golden_training_dir / "training_regions.bed",
+        genome_fasta=golden_genome,
+        feature_list=golden_feature_list,
         seq_len=1000,
     )
     x, y = ds[0]
@@ -68,14 +70,14 @@ def test_dataset_item_shapes(real_fasta, real_training_dir, feature_list):
     assert y.dtype == torch.float32
 
 
-def test_dataset_label_assigned(real_fasta, real_training_dir, feature_list):
+def test_dataset_label_assigned(golden_genome, golden_training_dir, golden_feature_list):
     """At least one label should be active for each item in the dataset."""
     from src.data_loading.genomics_dataset import GenomicsDataset
 
     ds = GenomicsDataset(
-        bed_path=real_training_dir / "training_regions.bed",
-        genome_fasta=real_fasta,
-        feature_list=feature_list,
+        bed_path=golden_training_dir / "training_regions.bed",
+        genome_fasta=golden_genome,
+        feature_list=golden_feature_list,
         seq_len=1000,
     )
     for i in range(min(len(ds), 5)):
@@ -83,14 +85,14 @@ def test_dataset_label_assigned(real_fasta, real_training_dir, feature_list):
         assert y.sum().item() >= 1.0, f"Item {i} has no active label"
 
 
-def test_dataset_one_hot_valid(real_fasta, real_training_dir, feature_list):
+def test_dataset_one_hot_valid(golden_genome, golden_training_dir, golden_feature_list):
     """Each sequence position is a unit vector (known base) or zero vector (N)."""
     from src.data_loading.genomics_dataset import GenomicsDataset
 
     ds = GenomicsDataset(
-        bed_path=real_training_dir / "training_regions.bed",
-        genome_fasta=real_fasta,
-        feature_list=feature_list,
+        bed_path=golden_training_dir / "training_regions.bed",
+        genome_fasta=golden_genome,
+        feature_list=golden_feature_list,
         seq_len=1000,
     )
     x, _ = ds[0]
@@ -98,18 +100,18 @@ def test_dataset_one_hot_valid(real_fasta, real_training_dir, feature_list):
     assert torch.all((col_sums == 0) | (col_sums == 1))
 
 
-def test_dataset_centre_crop(real_fasta, real_training_dir, feature_list):
+def test_dataset_centre_crop(golden_genome, golden_training_dir, golden_feature_list):
     """seq_len shorter than a BED window triggers centre-cropping."""
     from src.data_loading.genomics_dataset import GenomicsDataset
 
     ds = GenomicsDataset(
-        bed_path=real_training_dir / "training_regions.bed",
-        genome_fasta=real_fasta,
-        feature_list=feature_list,
+        bed_path=golden_training_dir / "training_regions.bed",
+        genome_fasta=golden_genome,
+        feature_list=golden_feature_list,
         seq_len=100,   # most regulatory features are > 100 bp
     )
     # Find an item whose BED window is longer than 100 bp
-    bed = (real_training_dir / "training_regions.bed").read_text().splitlines()
+    bed = (golden_training_dir / "training_regions.bed").read_text().splitlines()
     for line in bed:
         parts = line.split("\t")
         window_len = int(parts[2]) - int(parts[1])
@@ -124,20 +126,20 @@ def test_dataset_centre_crop(real_fasta, real_training_dir, feature_list):
         assert x.shape == (4, 100)
 
 
-def test_dataset_right_pad(real_fasta, real_training_dir, feature_list):
+def test_dataset_right_pad(golden_genome, golden_training_dir, golden_feature_list):
     """seq_len longer than a BED window triggers N-padding (zero columns)."""
     from src.data_loading.genomics_dataset import GenomicsDataset
 
     ds = GenomicsDataset(
-        bed_path=real_training_dir / "training_regions.bed",
-        genome_fasta=real_fasta,
-        feature_list=feature_list,
+        bed_path=golden_training_dir / "training_regions.bed",
+        genome_fasta=golden_genome,
+        feature_list=golden_feature_list,
         seq_len=5000,   # longer than any regulatory feature
     )
     x, _ = ds[0]
     assert x.shape == (4, 5000)
     # Some suffix columns must be zero-padded N
-    bed = (real_training_dir / "training_regions.bed").read_text().splitlines()
+    bed = (golden_training_dir / "training_regions.bed").read_text().splitlines()
     parts = bed[0].split("\t")
     window_len = int(parts[2]) - int(parts[1])
     if window_len < 5000:

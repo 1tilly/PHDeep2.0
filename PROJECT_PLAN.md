@@ -108,6 +108,45 @@ Reach functional parity with the original `PhDeep` feature set while making `PHD
   passes, ruff clean, mypy clean under CI's actual
   `--ignore-missing-imports` invocation. Marked both `done` — this also
   formally unblocks PH2-013.
+- Built PH2-013 (golden fixture dataset + regression tests). Froze a real
+  GRCh38 chr22:20M-20.1M genome/regulatory-BED fixture
+  (`scripts/fetch_golden_genome_fixture.py`,
+  `tests/data/golden_pipeline/`), replacing `tests/conftest.py`'s
+  `real_fasta`/`real_training_dir` fixtures that fetched the same data
+  live from Ensembl REST on every test run (a genuine flake — a live 503
+  was hit from that code the same day). Added 18 hand-built variants
+  (`scripts/build_golden_variants.py`, ref alleles read from the frozen
+  FASTA via pyfaidx so the ref-mismatch sanity check never fires) and a
+  deterministic-formula (not model-inferred) `predictions.tsv`
+  (`scripts/build_golden_predictions.py`) so every variant/feature value
+  is mutually distinct — deliberately catching column-mixup bugs an
+  untrained model's near-identical outputs would hide. Added exact-match
+  regression coverage: `test_bed_to_training_integration.py` now compares
+  byte-exact against the already-committed `encode_dnase_fixture/output/`
+  (verified identical before trusting it — no drift found);
+  `test_golden_aggregate_stats.py` snapshot-tests the real `aggregate` ->
+  `stats` `LocalRunner` output (R backend swapped for a pure
+  `DeterministicSkatBackend`, `tests/golden_utils.py`) against committed
+  `expected/*.tsv`, hand-verified against `predictions.tsv`'s formula for
+  2 rows before committing; `test_golden_predict.py` covers `predict`'s
+  schema/range/ref-mismatch-warning invariants with an untrained seeded
+  checkpoint. `test_golden_fixture_integrity.py` and
+  `test_golden_aggregate_stats.py` both run and pass with zero torch
+  installed, confirmed directly (a hard requirement, not just tested in
+  the full torch env). Along the way, found and fixed a real ordering bug
+  the design review had flagged as likely:
+  `config.pipeline_config.AGGREGATION_OUTPUT_COLUMNS`/
+  `STATS_OUTPUT_COLUMNS` didn't match the real emission order of
+  `build_variant_weights_table`/`run_skat_o` (`variant_id`'s position,
+  and `q_value`/`weight`'s order) — fixed both constants and
+  `docs/stage_contracts.md` to match reality, verified no runtime code
+  depended on the old (wrong) order.
+  Two real pipeline behaviors are deliberately **pinned, not fixed**, as
+  documented follow-up items (`tests/data/golden_pipeline/README.md`):
+  a missing (`./.`) genotype call recodes to dosage `9` rather than being
+  excluded (pinned at `chr22:13492:G:T`, sample `S05`), and samples
+  present in `genotypes.tsv` but absent from `phenotype.tsv` are silently
+  dropped rather than warned about (pinned: sample `S09`).
 
 ## Milestones
 
@@ -197,7 +236,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | PH2-010 | M2 | Rebuild `bed_to_training` workflow using parser API | P0 | PH2-009 | done | Feature list + training bed outputs reproducible |
 | PH2-011 | M2 | Harden genome/variant sequence generation (`vcf_processing`) | P0 | PH2-003 | done | Sequence mutation cases (SNV/INS/DEL) validated |
 | PH2-012 | M2 | ~~Harden GeneHancer/GFF parser~~ Rescope as generic annotation-join stage | P2 | none yet exists | blocked | See note below |
-| PH2-013 | M2 | Build golden fixture dataset and expected outputs | P0 | PH2-009, PH2-010, PH2-011 | todo | Fixtures versioned; regression tests pass |
+| PH2-013 | M2 | Build golden fixture dataset and expected outputs | P0 | PH2-009, PH2-010, PH2-011 | done | Fixtures versioned; regression tests pass |
 | PH2-014 | M3 | Fix model module import structure and package paths | P0 | PH2-003, PH2-001 | todo | Model modules import by package path only |
 | PH2-015 | M3 | Correct channel-size calculation and model shape tests | P0 | PH2-014 | todo | Forward pass succeeds with shape assertions |
 | PH2-016 | M3 | Implement canonical training loop CLI and checkpointing | P0 | PH2-014, PH2-015, PH2-005 | todo | `train` command runs end-to-end locally |

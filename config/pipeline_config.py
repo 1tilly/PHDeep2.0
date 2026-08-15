@@ -14,14 +14,14 @@ BED_TO_TRAINING_OUTPUT_COLUMNS = ("chrom", "start", "end", "feature")
 # fixed columns are captured here; see docs/stage_contracts.md.
 PREDICTION_OUTPUT_COLUMNS = ("chromosome", "start", "reference", "alternate")
 AGGREGATION_OUTPUT_COLUMNS = (
-    "variant_id", "chromosome", "start", "end", "reference", "alternate",
+    "chromosome", "start", "end", "reference", "alternate", "variant_id",
     "group", "n_features", "eis_ref", "eis_alt", "eis_diff",
     "abs_delta_max", "abs_delta_sum", "l2_delta",
 )
 GENOTYPE_MATRIX_KEY_COLUMN = "variant_id"
 STATS_OUTPUT_COLUMNS = (
     "feature_id", "n_variants", "n_samples", "p_value",
-    "p_value_burden", "p_value_skat", "q_value", "weight",
+    "p_value_burden", "p_value_skat", "weight", "q_value",
 )
 
 

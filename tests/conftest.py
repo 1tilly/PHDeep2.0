@@ -1,109 +1,102 @@
 """Shared test fixtures for PHDeep2.0.
 
-Real genomic data is downloaded once per test session via public REST APIs:
-  - FASTA : GRCh38 chr22:20 Mb–20.1 Mb (Ensembl REST, plain text)
+Genomic data used across the test suite is a FROZEN golden fixture (PH2-013)
+under `tests/data/golden_pipeline/`:
+  - FASTA : GRCh38 chr22:20 Mb-20.1 Mb (fetched once via
+            `scripts/fetch_golden_genome_fixture.py`, committed to the repo)
   - BED   : Ensembl Regulatory Build features in that region
-            (enhancer / CTCF_binding_site / promoter)
+            (enhancer / CTCF_binding_site / promoter), also frozen
 
-BED coordinates are stored relative to the start of the downloaded FASTA
-slice (i.e. position 0 in the FASTA == chr22:20,000,000 in GRCh38) so
-that pyfaidx can resolve them correctly against the local file.
+BED/variant coordinates are stored relative to the start of the fixture's
+FASTA (i.e. position 0 in the FASTA == chr22:20,000,000 in GRCh38) so that
+pyfaidx can resolve them correctly against the local file. See
+`tests/data/golden_pipeline/README.md` for full provenance and regeneration
+instructions. Earlier versions of these fixtures fetched this data live from
+Ensembl REST on every test session — that was replaced (PH2-013) because it
+made the suite depend on a live external API for every run.
 """
 from __future__ import annotations
 
-import textwrap
 from pathlib import Path
 
+import pandas as pd
 import pytest
-import requests
 
-# 100 kb window — gene-dense region of chr22
-_CHROM        = "chr22"
-_REGION_START = 20_000_000   # 0-based (BED / pyfaidx convention)
-_REGION_END   = 20_100_000   # exclusive
+GOLDEN_DIR = Path(__file__).resolve().parent / "data" / "golden_pipeline"
 
-_ENSEMBL      = "https://rest.ensembl.org"
-_TIMEOUT      = 60           # seconds
-
-
-# ── Real FASTA ───────────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="session")
-def real_fasta(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """
-    GRCh38 chr22:20,000,000–20,100,000 from Ensembl REST API.
+def golden_dir() -> Path:
+    """Root of the frozen golden pipeline fixture."""
+    return GOLDEN_DIR
 
-    Written as a single-sequence FASTA whose position 0 corresponds to
-    chr22:20,000,000 in the reference genome.
-    """
-    dest = tmp_path_factory.mktemp("genome") / "hg38_chr22_20m.fa"
-    # Ensembl uses 1-based, inclusive coords
-    url = (
-        f"{_ENSEMBL}/sequence/region/human/"
-        f"22:{_REGION_START + 1}..{_REGION_END}"
-        "?content-type=text/plain"
-    )
-    r = requests.get(url, timeout=_TIMEOUT)
-    r.raise_for_status()
-    seq = r.text.strip().upper()
-    # Wrap at 60 chars so pyfaidx can build a valid .fai index
-    wrapped = "\n".join(textwrap.wrap(seq, 60))
-    dest.write_text(f">{_CHROM}\n{wrapped}\n")
+
+@pytest.fixture(scope="session")
+def golden_genome() -> Path:
+    """Path to the frozen chr22:20M-20.1M FASTA."""
+    return GOLDEN_DIR / "genome.fa"
+
+
+@pytest.fixture(scope="session")
+def golden_training_dir() -> Path:
+    """Directory with training_regions.bed + features.txt."""
+    return GOLDEN_DIR / "training"
+
+
+@pytest.fixture(scope="session")
+def golden_feature_list(golden_training_dir: Path) -> list[str]:
+    """Ordered feature labels from the golden training directory."""
+    return [
+        line.strip()
+        for line in (golden_training_dir / "features.txt").read_text().splitlines()
+        if line.strip()
+    ]
+
+
+@pytest.fixture(scope="session")
+def golden_variants() -> pd.DataFrame:
+    """The 18-variant golden fixture as a DataFrame."""
+    return pd.read_csv(GOLDEN_DIR / "variants.tsv", sep="\t", dtype={"start": int})
+
+
+@pytest.fixture(scope="session")
+def golden_variants_feather(tmp_path_factory: pytest.TempPathFactory, golden_variants: pd.DataFrame) -> Path:
+    """golden_variants written to feather (PredictConfig.input_variants_feather
+    requires feather, not TSV)."""
+    dest = tmp_path_factory.mktemp("golden_variants") / "variants.feather"
+    golden_variants.reset_index(drop=True).to_feather(dest)
     return dest
 
 
-# ── Real training BED (Ensembl Regulatory Build) ─────────────────────────────
-
 @pytest.fixture(scope="session")
-def real_training_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
+def golden_checkpoint(tmp_path_factory: pytest.TempPathFactory, golden_feature_list: list[str]) -> Path:
+    """An UNTRAINED, seeded `deepsea` model checkpoint.
+
+    A real training run isn't needed to test predict's I/O plumbing —
+    just a deterministic, loadable checkpoint.
     """
-    Directory with training_regions.bed + features.txt from Ensembl
-    Regulatory Build on chr22:20M–20.1M.
+    import torch
 
-    BED coordinates are offset by _REGION_START so they index correctly
-    into the real_fasta fixture file.
-    """
-    d = tmp_path_factory.mktemp("training")
+    from src.models.registry import build_model
 
-    url = (
-        f"{_ENSEMBL}/overlap/region/human/"
-        f"22:{_REGION_START + 1}..{_REGION_END}"
-        "?feature=regulatory"
-    )
-    r = requests.get(url, headers={"Content-Type": "application/json"}, timeout=_TIMEOUT)
-    r.raise_for_status()
+    torch.manual_seed(1234)
+    model = build_model("deepsea", sequence_length=1000, n_targets=len(golden_feature_list))
 
-    rows: list[tuple[str, int, int, str]] = []
-    for feat in r.json():
-        label = feat.get("description", "")
-        if not label:
-            continue
-        # Convert Ensembl 1-based → 0-based, then subtract region start
-        start = int(feat["start"]) - 1 - _REGION_START
-        end   = int(feat["end"])       - _REGION_START
-        if start < 0 or end > (_REGION_END - _REGION_START) or start >= end:
-            continue
-        rows.append((_CHROM, start, end, label))
-
-    if len(rows) < 5:
-        pytest.skip(
-            f"Only {len(rows)} Ensembl regulatory features found — "
-            "check network connectivity or widen the region."
-        )
-
-    # Preserve insertion order for reproducible feature indices
-    feature_types = list(dict.fromkeys(f for _, _, _, f in rows))
-    (d / "features.txt").write_text("\n".join(feature_types) + "\n")
-    bed_lines = [f"{c}\t{s}\t{e}\t{f}" for c, s, e, f in rows]
-    (d / "training_regions.bed").write_text("\n".join(bed_lines) + "\n")
-    return d
+    dest = tmp_path_factory.mktemp("golden_checkpoint") / "deepsea_untrained.pt"
+    torch.save({"model_state_dict": model.state_dict()}, dest)
+    return dest
 
 
 @pytest.fixture(scope="session")
-def feature_list(real_training_dir: Path) -> list[str]:
-    """Ordered feature labels from the real training directory."""
-    return [
-        line.strip()
-        for line in (real_training_dir / "features.txt").read_text().splitlines()
-        if line.strip()
-    ]
+def golden_predictions_feather(
+    tmp_path_factory: pytest.TempPathFactory, golden_dir: Path
+) -> Path:
+    """predictions.tsv joined with genotypes.tsv, written to feather (see
+    `tests/golden_utils.load_golden_predictions`)."""
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from golden_utils import load_golden_predictions
+
+    dest = tmp_path_factory.mktemp("golden_predictions") / "predictions.feather"
+    return load_golden_predictions(golden_dir, dest)

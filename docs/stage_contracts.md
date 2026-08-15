@@ -98,8 +98,10 @@ Inputs:
 
 Outputs:
 - `output_scores` (required): the per-variant weights table.
-  `config.pipeline_config.AGGREGATION_OUTPUT_COLUMNS` is the exact column
-  list: `variant_id, chromosome, start, end, reference, alternate, group,
+  `config.pipeline_config.AGGREGATION_OUTPUT_COLUMNS` is the exact,
+  ordered column list (verified against `build_variant_weights_table`'s
+  real emission order by the PH2-013 golden fixture, not just a set):
+  `chromosome, start, end, reference, alternate, variant_id, group,
   n_features, eis_ref, eis_alt, eis_diff, abs_delta_max, abs_delta_sum,
   l2_delta`. `eis_ref`/`eis_alt` are per-variant sums of ref/alt
   predictions across model features; `eis_diff` is their difference;
@@ -139,9 +141,11 @@ Inputs:
   (default `"optimal.adj"`)
 
 Outputs:
-- result table with columns (`config.pipeline_config.STATS_OUTPUT_COLUMNS`):
-  `feature_id, n_variants, n_samples, p_value, p_value_burden,
-  p_value_skat, q_value, weight`, sorted by `p_value` ascending.
+- result table with columns (`config.pipeline_config.STATS_OUTPUT_COLUMNS`,
+  an exact ordered list — verified against `run_skat_o`'s real emission
+  order by the PH2-013 golden fixture, not just a set): `feature_id,
+  n_variants, n_samples, p_value, p_value_burden, p_value_skat, weight,
+  q_value`, sorted by `p_value` ascending.
   - There is no `effect_size` column: SKAT-O is a variance-component test
     and does not produce one.
   - `q_value` is a real Benjamini-Hochberg FDR correction (`bh_fdr`) over
