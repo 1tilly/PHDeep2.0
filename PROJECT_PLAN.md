@@ -101,6 +101,14 @@ Reach functional parity with the original `PhDeep` feature set while making `PHD
   recodes genotype columns already present on the input DataFrame), cohort
   phenotype/covariate ingestion, and familial/kinship null models.
 
+### 2026-08-15
+- Re-verified PH2-009/PH2-010 (`bed_loader.py`, `bed_to_training.py`)
+  rather than trusting the stale `in_progress` label: full non-torch,
+  non-network test suite green, `test_bed_to_training_integration.py`
+  passes, ruff clean, mypy clean under CI's actual
+  `--ignore-missing-imports` invocation. Marked both `done` — this also
+  formally unblocks PH2-013.
+
 ## Milestones
 
 ### M0 - Baseline and Guardrails (Week 1)
@@ -185,8 +193,8 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | PH2-006 | M1 | Remove hardcoded absolute paths from source tree | P0 | PH2-005 | done | `rg '/home/|/rds/'` returns no code hits |
 | PH2-007 | M1 | Define execution backend interface | P0 | PH2-005 | done | `LocalRunner` implemented with contract tests |
 | PH2-008 | M1 | Add backend adapters (`SlurmRunner`, `AwsBatchRunner`) as optional modules | P1 | PH2-007 | todo | Adapters can be imported without affecting core |
-| PH2-009 | M2 | Repair and finalize BED parser API | P0 | PH2-003, PH2-005 | in_progress | BED parser passes unit tests on fixtures |
-| PH2-010 | M2 | Rebuild `bed_to_training` workflow using parser API | P0 | PH2-009 | in_progress | Feature list + training bed outputs reproducible |
+| PH2-009 | M2 | Repair and finalize BED parser API | P0 | PH2-003, PH2-005 | done | BED parser passes unit tests on fixtures |
+| PH2-010 | M2 | Rebuild `bed_to_training` workflow using parser API | P0 | PH2-009 | done | Feature list + training bed outputs reproducible |
 | PH2-011 | M2 | Harden genome/variant sequence generation (`vcf_processing`) | P0 | PH2-003 | done | Sequence mutation cases (SNV/INS/DEL) validated |
 | PH2-012 | M2 | ~~Harden GeneHancer/GFF parser~~ Rescope as generic annotation-join stage | P2 | none yet exists | blocked | See note below |
 | PH2-013 | M2 | Build golden fixture dataset and expected outputs | P0 | PH2-009, PH2-010, PH2-011 | todo | Fixtures versioned; regression tests pass |
