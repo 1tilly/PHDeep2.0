@@ -164,7 +164,7 @@ class BCFParser():
 
 
             vcf["length"] = vcf.REF.str.len()
-            vcf["end"] = vcf[["POS","length"]].apply(lambda x: x[0]+(x[1]-1) if x[1]>1 else x[0], axis=1)
+            vcf["end"] = vcf["POS"] + vcf["length"].clip(lower=1) - 1
 
             name_dict= {"POS":"start", "CHROM":"chromosome",
                     "REF":"reference", "ALT":"alternate"
