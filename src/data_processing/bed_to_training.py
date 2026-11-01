@@ -17,14 +17,13 @@ class BedTrainingSet():
     def generate_feature_list(self, feature_exp_dict):
         return self.bed_parser.generate_feature_list(feature_exp_dict)
 
-    def write_bed_by_feature(self, assay_df, feature_list, feature_exp_dict, in_path, out_path, error_log, assembly="hg19", exp_count=20):
-        i = 0
+    def write_bed_by_feature(self, assay_df, feature_list, feature_exp_dict, in_path, out_path, error_log, assembly="hg19", exp_count: int | None = None):
+        # exp_count limits the number of successfully read *files*; None disables the limit.
+        files_read = 0
         written_features = []
         with open(error_log, "w+", encoding="utf-8") as read_error_log:
             for feature in feature_list:
-                """
-                Aggregate each feature into a df and sort/clean it, then write it to the bed file and remove the dataframe from memory
-                """
+                # Aggregate each feature into a df and sort/clean it, then write it to the bed file and remove the dataframe from memory
                 feature_frames = []
                 if feature_exp_dict[feature] is None:
                     continue
@@ -41,13 +40,13 @@ class BedTrainingSet():
                             tmp_1["feature"] = feature
                             tmp_1 = tmp_1[["chrom", "start", "end", "feature"]]
                             feature_frames.append(tmp_1)
-                            i += 1
+                            files_read += 1
 
                 if feature_frames:
                     feature_df = pd.concat(feature_frames, ignore_index=True)
                     feature_df.to_csv(out_path, sep="\t", index=False, mode="a+", header=False)
                     written_features.append(feature)
-                if exp_count and i >= exp_count:
+                if exp_count is not None and files_read >= exp_count:
                     break
 
         return written_features
@@ -106,8 +105,8 @@ def run_bed_to_training(
         str(in_bed_path),
         str(out_bed_path),
         str(error_log_path),
-        assembly,
-        False,
+        assembly=assembly,
+        exp_count=None,
     )
 
     with open(feature_out_path, "w+", encoding="utf-8") as f:
