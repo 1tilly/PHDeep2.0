@@ -2,8 +2,11 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import pytest
 
-from src.data_processing.bed_to_training import BedTrainingSet
+pytest.importorskip("pybedtools")
+
+from src.data_processing.bed_to_training import BedTrainingSet  # noqa: E402
 
 
 class _FakeParser:

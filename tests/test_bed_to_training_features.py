@@ -4,7 +4,9 @@ from typing import Any
 import pandas as pd
 import pytest
 
-import src.data_processing.bed_to_training as btt
+pytest.importorskip("pybedtools")
+
+import src.data_processing.bed_to_training as btt  # noqa: E402
 
 COLUMNS = [
     "Biosample organism",

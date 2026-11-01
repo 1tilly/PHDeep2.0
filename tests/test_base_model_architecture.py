@@ -1,6 +1,8 @@
 import pytest
 
-from src.models.base_model.architecture import AbstractCNN
+pytest.importorskip("torch")
+
+from src.models.base_model.architecture import AbstractCNN  # noqa: E402
 
 
 def _layer(kernel_size: int, stride: int = 1, padding: int = 0, dilation: int = 1) -> dict:

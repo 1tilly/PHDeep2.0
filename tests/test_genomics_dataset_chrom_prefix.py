@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from src.data_loading.genomics_dataset import GenomicsDataset
+pytest.importorskip("torch")
+
+from src.data_loading.genomics_dataset import GenomicsDataset  # noqa: E402
 
 
 def _make_dataset(tmp_path: Path, bed_chrom: str) -> GenomicsDataset:

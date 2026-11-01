@@ -4,10 +4,12 @@ from pathlib import Path
 from typing import TypeVar
 
 import pandas as pd
-import torch
-import torch.nn as nn
+import pytest
 
-from src.prediction.predict import ReferencePredictor, VariantEffectPredictor
+torch = pytest.importorskip("torch")
+nn = torch.nn
+
+from src.prediction.predict import ReferencePredictor, VariantEffectPredictor  # noqa: E402
 
 T = TypeVar("T", ReferencePredictor, VariantEffectPredictor)
 
