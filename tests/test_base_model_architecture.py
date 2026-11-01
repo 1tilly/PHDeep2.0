@@ -28,4 +28,4 @@ def test_failure_reports_layer_index() -> None:
 
 
 def test_valid_configuration_returns_length() -> None:
-    assert AbstractCNN.calculate_output_channels(100, [_layer(8), _layer(4, stride=4)]) == 24
+    assert AbstractCNN.calculate_output_channels(100, [_layer(8), _layer(4, stride=4)]) == 23
