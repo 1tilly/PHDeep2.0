@@ -34,7 +34,7 @@ class AbstractCNN(ABC, nn.Module):
         """
         Calculate the output channels given a list of layer specifications.
         """
-        for layer in layers:
+        for i, layer in enumerate(layers):
             sequence_length = cls.output_size_1d_pt(
                 sequence_length,
                 padding=layer['padding'],
@@ -42,6 +42,11 @@ class AbstractCNN(ABC, nn.Module):
                 kernel_size=layer['kernel_size'],
                 stride=layer['stride']
             )
+            if sequence_length <= 0:
+                raise ValueError(
+                    f"{cls.__name__}: spatial length became {sequence_length} after layer {i}; "
+                    "input sequence_length too short for this configuration"
+                )
         return sequence_length
 
 
