@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base directories
-BASE_DIRS=("data/bed_files" "data/vcf_files" "data/reference_genome" "src/data_loading" "src/data_processing" "src/models/base_model" "src/models/model2" "src/models/bert_models/bert_model1" "src/prediction" "src/post_prediction" "src/statistical_testing" "src/utils" "src/experiments" "config" "results")
+BASE_DIRS=("data/bed_files" "data/vcf_files" "data/reference_genome" "src/data_loading" "src/data_processing" "src/models/base_model" "src/models/cnn_model1" "src/models/bert_models/bert_model1" "src/prediction" "src/post_prediction" "src/statistical_testing" "src/utils" "src/experiments" "config" "results")
 
 # Files to be created within specific directories
 declare -A FILES
