@@ -111,7 +111,7 @@ def run_bed_to_training(
     )
 
     with open(feature_out_path, "w+", encoding="utf-8") as f:
-        f.write("\n".join(feature_list))
+        f.write("\n".join(written_features))
 
     return {
         "planned_features": len(feature_list),
