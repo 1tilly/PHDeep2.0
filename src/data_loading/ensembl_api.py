@@ -15,14 +15,11 @@ class EnsemblAPI():
         assert end - start < 10000000, "Can't fetch more then 10 Mb (10 million bases)"
         sub_path = f"/sequence/region/{species}/"
         region = f"{chrom}:{int(start)}..{int(end)}"
-        r = requests.get(self.server + sub_path + region, headers={"Content-Type": "text/plain", "coord_system_version": str(GRCh)})
+        r = requests.get(self.server + sub_path + region, headers={"Content-Type": "text/plain", "coord_system_version": str(GRCh)}, timeout=120)
+        r.raise_for_status()
         if seq_len is not None:
             assert len(r.text) == seq_len, "Reference is not of length seq_len"
-        if r.ok:
-            return r.text
-        else:
-            r.raise_for_status()
-            return -1
+        return r.text
 
 
     def get_ref_for_chrom_region(self, var_df, frame_length=1000):
@@ -33,18 +30,19 @@ class EnsemblAPI():
 
 
     def get_ref_for_region(self, chrom, start, end, seq_len):
-        start -= seq_len/2 # TODO: needs to be adjusted for length of ref/alt
-        end += seq_len/2
+        start -= seq_len // 2 # TODO: needs to be adjusted for length of ref/alt
+        end += seq_len // 2
 
         api_cap = 10000000-1
         if end - start > api_cap: # the ensembl API allows maximum 10mb
             reference = ""
-            for i in range(int(start), int(end), api_cap):
-                if i+api_cap > end:
-                    e = end
-                else:
-                    e = i+api_cap
-                reference += self.get_reference(chrom,i,e, seq_len = seq_len)
+            i = int(start)
+            while i <= end:
+                e = min(i + api_cap, int(end))
+                reference += self.get_reference(chrom, i, e)
+                i = e + 1
+            expected_len = int(end) - int(start) + 1
+            assert len(reference) == expected_len, "Reference is not of expected length"
         else:
             reference = self.get_reference(chrom, start, end)
         return (chrom, start, end), reference
