@@ -190,7 +190,11 @@ class BEDParser():
         res["assembly"] = res["assembly"].astype(str)
 
 
-        res["proj_order"] = res["analysis"].apply(lambda x: proj_order.index(x))
+        rank = {t: i for i, t in enumerate(proj_order)}
+        unknown = set(res["analysis"].dropna().unique()) - set(rank)
+        if unknown:
+            logger.warning(f"Unknown analysis title(s) {sorted(map(str, unknown))} in {file_path}; using lowest priority")
+        res["proj_order"] = res["analysis"].map(rank).fillna(-1)
         res["bio_len"] = res.bio_repl.str.len()
         res["tech_len"] = res.tech_repl.str.len()
         df_sort = res.sort_values(["proj_order", "bio_len", "tech_len"], ascending=True)
@@ -267,7 +271,8 @@ class BEDParser():
         if assembly == "GRCh38":
             proj_order = self.proj_order_38
         meta_df = meta_df[meta_df.assembly == assembly]  # This should have happened in the cleaning step, but rather save than sorry
-        meta_df["proj_order"] = meta_df["analysis"].apply(lambda x: proj_order.index(x))
+        rank = {t: i for i, t in enumerate(proj_order)}
+        meta_df["proj_order"] = meta_df["analysis"].map(rank).fillna(-1)
         meta_df["bio_len"] = meta_df.bio_repl.str.len()
         meta_df["tech_len"] = meta_df.tech_repl.str.len()
         meta_df_sort = meta_df.sort_values(["proj_order", "bio_len", "tech_len"], ascending=True)
