@@ -240,12 +240,17 @@ class PipelineConfig:
             raise ValueError(f"Unsupported backend: {self.execution.backend}")
 
         if self.predict is not None:
+            if self.predict.mode not in {"reference", "variant"}:
+                raise ValueError(f"Unsupported predict.mode: {self.predict.mode!r}")
             if self.predict.mode == "reference" and self.predict.input_regions_bed is None:
                 raise ValueError("predict.input_regions_bed is required when mode='reference'")
             if self.predict.mode == "variant" and self.predict.input_variants_feather is None:
                 raise ValueError("predict.input_variants_feather is required when mode='variant'")
             if self.predict.mode == "variant" and self.predict.input_regions_bed is not None:
                 raise ValueError("predict.input_regions_bed should not be set when mode='variant'")
+
+        if self.stats is not None and self.stats.method not in {"skat_o", "fisher", "none"}:
+            raise ValueError(f"Unsupported stats.method: {self.stats.method!r}")
 
         if "stats" in self.stage_order and self.stats is not None and self.stats.method == "skat_o":
             if (
