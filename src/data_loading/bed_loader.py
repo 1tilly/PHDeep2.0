@@ -230,7 +230,7 @@ class BEDParser():
                                 tmp = tmp[["chrom","start","end","peak_size"]]
 
                                 if feature_df is not None:
-                                    feature_df = feature_df.append(tmp, ignore_index=True)
+                                    feature_df = pd.concat([feature_df, tmp], ignore_index=True)
                                 else:
                                     feature_df = tmp
                                 i += 1
