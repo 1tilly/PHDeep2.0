@@ -202,13 +202,20 @@ class BEDParser():
         return df_dup.drop(["proj_order", "bio_len", "tech_len"], axis=1)
 
     def get_peaks_per_feature(self, meta_df, feature_list, feature_exp_dict, path_bed_out, assembly="hg19"):
-        i = 0
         read_error_log = logging.getLogger("read_error_log")
         read_error_log.setLevel(logging.ERROR)
         handler = logging.FileHandler( os.path.join(path_bed_out, "peak_size_read_errors.txt"), "w+")
         formatter = logging.Formatter('%(message)s')
         handler.setFormatter(formatter)
         read_error_log.addHandler(handler)
+        try:
+            self._collect_peak_sizes(meta_df, feature_list, feature_exp_dict, path_bed_out, assembly, read_error_log)
+        finally:
+            read_error_log.removeHandler(handler)
+            handler.close()
+
+    def _collect_peak_sizes(self, meta_df, feature_list, feature_exp_dict, path_bed_out, assembly, read_error_log):
+        i = 0
 
         for feature in feature_list:
             """
