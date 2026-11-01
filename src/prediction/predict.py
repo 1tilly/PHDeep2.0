@@ -115,6 +115,8 @@ class ReferencePredictor:
         predictions : np.ndarray, shape (n_regions, n_targets)
         """
         encoded = [one_hot_encode(self._fetch(c, s, e)) for c, s, e in regions]
+        if not encoded:
+            return np.empty((0, 0), dtype=np.float32)
         results = []
         for i in range(0, len(encoded), self.batch_size):
             batch = torch.from_numpy(np.stack(encoded[i: i + self.batch_size])).to(self.device)
@@ -202,6 +204,8 @@ class VariantEffectPredictor:
     @torch.no_grad()
     def _predict_batch(self, sequences: list[str]) -> np.ndarray:
         encoded = [one_hot_encode(s) for s in sequences]
+        if not encoded:
+            return np.empty((0, 0), dtype=np.float32)
         results = []
         for i in range(0, len(encoded), self.batch_size):
             batch = torch.from_numpy(np.stack(encoded[i: i + self.batch_size])).to(self.device)
