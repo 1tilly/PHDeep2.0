@@ -44,15 +44,18 @@ def _download_file(url: str, dest: Path) -> tuple[str, bool, str]:
     """Download a single file. Returns (url, success, message)."""
     if dest.exists() and dest.stat().st_size > 0:
         return url, True, "already exists"
+    tmp = dest.with_name(dest.name + ".part")
     try:
         dest.parent.mkdir(parents=True, exist_ok=True)
         with requests.get(url, stream=True, timeout=120) as r:
             r.raise_for_status()
-            with open(dest, "wb") as f:
+            with open(tmp, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1 << 20):
                     f.write(chunk)
+        tmp.replace(dest)
         return url, True, f"downloaded {dest.stat().st_size // 1024} KB"
     except Exception as exc:
+        tmp.unlink(missing_ok=True)
         return url, False, str(exc)
 
 
