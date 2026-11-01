@@ -114,7 +114,11 @@ class GenomicsDataset(Dataset):
         centre-crop or right-pad with N.
         """
         # pyfaidx uses 0-based half-open coordinates
-        chrom_key = chrom if chrom in self._genome else chrom.lstrip("chr")
+        if chrom in self._genome:
+            chrom_key = chrom
+        else:
+            # Strip the literal "chr" prefix only (not any leading c/h/r chars)
+            chrom_key = chrom[3:] if chrom.startswith("chr") else chrom
         seq = str(self._genome[chrom_key][start:end])
 
         length = len(seq)
