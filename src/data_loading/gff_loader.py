@@ -79,13 +79,14 @@ class GeneHancerParser:
         if self.df is None:
             self.load_gff_to_df()
 
-        return self.df[self.df.connected_gene.apply(lambda x: len(x+gene_list) > len(set(x+gene_list)))]
+        gene_set = set(gene_list)
+        return self.df[self.df.connected_gene.apply(lambda x: bool(set(x or []) & gene_set))]
 
     def get_region(self, region):
         if self.df is None:
             self.load_gff_to_df()
 
-        return self.df[(self.df.chrom == str(region[0])) & (self.df.start > region[1]) & (self.df.start < region[2]) & (self.df.end > region[1]) & (self.df.end < region[2])]
+        return self.df[(self.df.chrom == str(region[0])) & (self.df.start >= region[1]) & (self.df.start <= region[2]) & (self.df.end >= region[1]) & (self.df.end <= region[2])]
 
     def get_geneSNPlist(self, gene=None):
         if "snp_list" not in self.df.columns:
@@ -95,6 +96,7 @@ class GeneHancerParser:
             Explode by connected_gene, then merge by unique value and append the snp_lists
             """
             df = self.df.explode(column="connected_gene").groupby(by=["connected_gene"]).agg({"genehancer_id":lambda x: set(x), "snp_list": lambda x:x.sum()})
+            df = df[df.index == gene]
         else:
             """
             ToDo: Here I should implement a way to run this for each and every unique gene in the geneHancer DF, efficiently
