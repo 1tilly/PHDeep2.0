@@ -109,8 +109,14 @@ def _diff_text(name: str, actual: str, expected_path: Path) -> list[str]:
     return list(diff)
 
 
-def _diff_df(name: str, actual_df, expected_path: Path, str_cols: list[str]) -> list[str]:
-    actual_text = actual_df.to_csv(sep="\t", index=False, lineterminator="\n", na_rep="")
+def _diff_df(name: str, actual_df, expected_path: Path) -> list[str]:
+    """Serialize via the same writer used in write mode, then diff."""
+    import golden_utils as gu
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp_path = Path(td) / name
+        gu.write_expected_tsv(actual_df, tmp_path)
+        actual_text = tmp_path.read_text()
     return _diff_text(name, actual_text, expected_path)
 
 
@@ -155,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
                 df = result[key]
                 expected_path = EXPECTED_DIR / filename
                 if args.check:
-                    diffs.extend(_diff_df(filename, df, expected_path, str_cols=[]))
+                    diffs.extend(_diff_df(filename, df, expected_path))
                 else:
                     gu.write_expected_tsv(df, expected_path)
                     _log(args.quiet, f"Wrote {expected_path}")
