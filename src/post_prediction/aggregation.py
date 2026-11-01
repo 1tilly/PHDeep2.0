@@ -209,6 +209,7 @@ def build_variant_weights_table(pred_df: pd.DataFrame, group_col: str) -> pd.Dat
     if not delta_cols:
         raise ValueError("No delta_* columns found in pred_df.")
 
+    pred_df = pred_df.reset_index(drop=True)
     frame = _canonical_variant_frame(pred_df)
     pred_sorted = pred_df.loc[frame.index].reset_index(drop=True)
     out = frame.reset_index(drop=True).copy()
@@ -261,6 +262,7 @@ def build_genotype_matrix(pred_df: pd.DataFrame, sample_ids: list[str]) -> pd.Da
             f"Sample column(s) not found in pred_df: {', '.join(missing_cols)}"
         )
 
+    pred_df = pred_df.reset_index(drop=True)
     frame = _canonical_variant_frame(pred_df)
     pred_sorted = pred_df.loc[frame.index].reset_index(drop=True)
     frame_sorted = frame.reset_index(drop=True)
