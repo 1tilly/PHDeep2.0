@@ -255,7 +255,7 @@ class BEDParser():
                     os.path.join(full_directory_path, "peak_sizes.tsv"),
                     sep="\t",
                     index=False,
-                    mode="a+",
+                    mode="w",
                     header=False,
                 )
 
