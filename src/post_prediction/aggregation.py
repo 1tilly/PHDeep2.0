@@ -102,6 +102,8 @@ def aggregate_variant_scores(
             max_abs_delta_<feature>, mean_abs_delta_<feature>, l2_delta_<feature>
         where <feature> defaults to "0", "1", … (from delta_0, delta_1, …)
         or the supplied feature_names.
+        Rows whose group_col is null/NaN are RETAINED as a single group with
+        a NaN key, so n_variants sums to len(delta_df).
     """
     delta_cols = _delta_columns(delta_df)
     if not delta_cols:
@@ -118,7 +120,7 @@ def aggregate_variant_scores(
     label = feature_names or [c.removeprefix("delta_") for c in delta_cols]
     rows = []
 
-    for group_key, group in delta_df.groupby(group_col):
+    for group_key, group in delta_df.groupby(group_col, dropna=False):
         deltas = group[delta_cols].values.astype(np.float64)  # (n_variants, n_features)
         row: dict = {group_col: group_key, "n_variants": len(group)}
         for i, col_label in enumerate(label):
